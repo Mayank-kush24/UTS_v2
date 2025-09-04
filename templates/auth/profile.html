@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - PostgreSQL Data Viewer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0 fw-semibold">
+                    <i class="fas fa-user-circle me-2"></i>User Profile
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 text-center mb-4">
+                        <div class="profile-avatar">
+                            <i class="fas fa-user-circle fa-5x text-primary"></i>
+                        </div>
+                        <h5 class="mt-3 fw-semibold">{{ current_user.full_name or current_user.username }}</h5>
+                        <p class="text-muted">{{ current_user.email }}</p>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Username</label>
+                                    <div class="form-control-plaintext fw-medium">{{ current_user.username }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Email</label>
+                                    <div class="form-control-plaintext fw-medium">{{ current_user.email }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Full Name</label>
+                                    <div class="form-control-plaintext fw-medium">{{ current_user.full_name or 'Not provided' }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Member Since</label>
+                                    <div class="form-control-plaintext fw-medium">{{ current_user.created_at[:10] if current_user.created_at else 'Unknown' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Last Login</label>
+                                    <div class="form-control-plaintext fw-medium">{{ current_user.last_login[:19] if current_user.last_login else 'Never' }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Status</label>
+                                    <div class="form-control-plaintext">
+                                        <span class="badge bg-success">Active</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0 fw-semibold">
+                            <i class="fas fa-shield-check me-2"></i>Security
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-key me-2 text-primary"></i>
+                                    <strong>Password</strong>
+                                    <br><small class="text-muted">Last changed: Recently</small>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" disabled>
+                                    Change Password
+                                </button>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-mobile me-2 text-primary"></i>
+                                    <strong>Two-Factor Auth</strong>
+                                    <br><small class="text-muted">Not enabled</small>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" disabled>
+                                    Enable 2FA
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0 fw-semibold">
+                            <i class="fas fa-chart-bar me-2"></i>Activity
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">Activity tracking coming soon</h6>
+                            <p class="text-muted small">We'll show your database activity, login history, and usage statistics here.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

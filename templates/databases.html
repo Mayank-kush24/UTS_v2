@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}Database Management - PostgreSQL Data Viewer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-2 text-gradient">
+                    <i class="fas fa-server me-2"></i>Database Management
+                </h1>
+                <p class="text-muted mb-0 fw-medium">Manage your PostgreSQL database connections</p>
+            </div>
+            <a href="{{ url_for('add_database') }}" class="btn btn-primary icon-hover">
+                <i class="fas fa-plus me-1"></i>Add Database
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if databases %}
+<div class="row">
+    {% for database in databases %}
+    <div class="col-lg-6 col-xl-4 mb-4">
+        <div class="card h-100 {{ 'border-success' if current_database_id == database.id else '' }}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="fas fa-database me-2"></i>{{ database.name }}
+                    {% if current_database_id == database.id %}
+                        <span class="badge bg-success ms-2">Connected</span>
+                    {% endif %}
+                </h5>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                            data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ url_for('edit_database', db_id=database.id) }}">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item text-danger" onclick="confirmDelete('{{ database.id }}', '{{ database.name }}')">
+                            <i class="fas fa-trash me-1"></i>Delete
+                        </button></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-4">
+                        <small class="text-muted fw-medium">Host</small>
+                        <div class="fw-semibold">{{ database.host }}</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <small class="text-muted fw-medium">Port</small>
+                        <div class="fw-semibold">{{ database.port }}</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <small class="text-muted fw-medium">Database</small>
+                        <div class="fw-semibold">{{ database.database }}</div>
+                    </div>
+                </div>
+                
+                {% if database.description %}
+                <div class="mb-3">
+                    <small class="text-muted fw-medium">Description</small>
+                    <div class="fw-medium">{{ database.description }}</div>
+                </div>
+                {% endif %}
+                
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block fw-medium">Created</small>
+                        <small class="fw-semibold">{{ database.created_at[:10] if database.created_at else 'Unknown' }}</small>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block fw-medium">Last Connected</small>
+                        <small class="fw-semibold">{{ database.last_connected[:10] if database.last_connected else 'Never' }}</small>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    {% if current_database_id == database.id %}
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-success" disabled>
+                                <i class="fas fa-check me-1"></i>Connected
+                            </button>
+                            <button class="btn btn-outline-danger icon-hover" onclick="disconnectDatabase('{{ database.id }}', '{{ database.name }}')">
+                                <i class="fas fa-unlink me-1"></i>Disconnect
+                            </button>
+                        </div>
+                    {% else %}
+                        <button class="btn btn-primary icon-hover" onclick="showConnectModal('{{ database.id }}', '{{ database.name }}')">
+                            <i class="fas fa-plug me-1"></i>Connect
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-server fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted fw-semibold">No databases configured</h4>
+                <p class="text-muted mb-4 fw-medium">Add your first PostgreSQL database connection to get started.</p>
+                <a href="{{ url_for('add_database') }}" class="btn btn-primary icon-hover">
+                    <i class="fas fa-plus me-1"></i>Add Your First Database
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Connect Modal -->
+<div class="modal fade" id="connectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-semibold">
+                    <i class="fas fa-plug me-2"></i>Connect to Database
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="connectForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Enter your credentials to connect to <strong id="modalDatabaseName"></strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="connectUsername" class="form-label">
+                            <i class="fas fa-user me-1"></i>Username
+                        </label>
+                        <input type="text" class="form-control" id="connectUsername" name="username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="connectPassword" class="form-label">
+                            <i class="fas fa-lock me-1"></i>Password
+                        </label>
+                        <input type="password" class="form-control" id="connectPassword" name="password" required>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="showPassword">
+                        <label class="form-check-label" for="showPassword">
+                            Show password
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary icon-hover" onclick="testConnection()">
+                        <i class="fas fa-vial me-1"></i>Test Connection
+                    </button>
+                    <button type="submit" class="btn btn-primary icon-hover">
+                        <i class="fas fa-plug me-1"></i>Connect
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger fw-semibold">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the database configuration <strong id="deleteDatabaseName"></strong>?</p>
+                <p class="text-muted mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger icon-hover">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentDatabaseId = null;
+
+// Show connect modal
+function showConnectModal(databaseId, databaseName) {
+    currentDatabaseId = databaseId;
+    document.getElementById('modalDatabaseName').textContent = databaseName;
+    document.getElementById('connectUsername').value = '';
+    document.getElementById('connectPassword').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('connectModal'));
+    modal.show();
+}
+
+// Show/hide password
+document.getElementById('showPassword').addEventListener('change', function() {
+    const passwordField = document.getElementById('connectPassword');
+    passwordField.type = this.checked ? 'text' : 'password';
+});
+
+// Connect form submission
+document.getElementById('connectForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!currentDatabaseId) return;
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-1"></div>Connecting...';
+    
+    try {
+        const formData = new FormData(this);
+        const response = await fetch(`/databases/connect/${currentDatabaseId}`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    window.location.reload();
+                }
+            }, 1000);
+        } else {
+            showToast(data.error, 'error');
+        }
+    } catch (error) {
+        showToast('Connection error: ' + error.message, 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+});
+
+// Test connection
+async function testConnection() {
+    if (!currentDatabaseId) return;
+    
+    const username = document.getElementById('connectUsername').value;
+    const password = document.getElementById('connectPassword').value;
+    
+    if (!username || !password) {
+        showToast('Please enter username and password', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        const response = await fetch(`/databases/test/${currentDatabaseId}`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Connection test successful!', 'success');
+        } else {
+            showToast('Connection test failed: ' + data.message, 'error');
+        }
+    } catch (error) {
+        showToast('Test error: ' + error.message, 'error');
+    }
+}
+
+// Confirm delete
+function confirmDelete(databaseId, databaseName) {
+    document.getElementById('deleteDatabaseName').textContent = databaseName;
+    document.getElementById('deleteForm').action = `/databases/delete/${databaseId}`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// Toast notifications
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Disconnect from database
+function disconnectDatabase(dbId, dbName) {
+    if (confirm(`Are you sure you want to disconnect from "${dbName}"?`)) {
+        const originalBtn = event.target.closest('button');
+        const originalText = originalBtn.innerHTML;
+        
+        // Show loading state
+        originalBtn.disabled = true;
+        originalBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-1"></div>Disconnecting...';
+        
+        fetch(`/databases/disconnect`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'database_id=' + encodeURIComponent(dbId)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Disconnected successfully', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showToast(data.error || 'Failed to disconnect', 'error');
+                originalBtn.disabled = false;
+                originalBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('An error occurred while disconnecting', 'error');
+            originalBtn.disabled = false;
+            originalBtn.innerHTML = originalText;
+        });
+    }
+}
+</script>
+{% endblock %}

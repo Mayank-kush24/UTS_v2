@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - PostgreSQL Data Viewer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0 fw-semibold">
+                    <i class="fas fa-sliders-h me-2"></i>Database Configuration
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('save_config') }}" id="configForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="host" class="form-label">
+                                    <i class="fas fa-server me-1"></i>Host
+                                </label>
+                                <input type="text" class="form-control" id="host" name="host" 
+                                       value="{{ config.host }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="port" class="form-label">
+                                    <i class="fas fa-plug me-1"></i>Port
+                                </label>
+                                <input type="number" class="form-control" id="port" name="port" 
+                                       value="{{ config.port }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="database" class="form-label">
+                            <i class="fas fa-database me-1"></i>Database Name
+                        </label>
+                        <input type="text" class="form-control" id="database" name="database" 
+                               value="{{ config.database }}" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="user" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Username
+                                </label>
+                                <input type="text" class="form-control" id="user" name="user" 
+                                       value="{{ config.user }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-1"></i>Password
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       value="{{ config.password }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-primary me-md-2 icon-hover" id="testBtn">
+                            <i class="fas fa-vial me-1"></i>Test Connection
+                        </button>
+                        <button type="submit" class="btn btn-success icon-hover">
+                            <i class="fas fa-save me-1"></i>Save & Connect
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="fas fa-info-circle me-2"></i>Configuration Help
+                </h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Default PostgreSQL Settings:</strong></p>
+                <ul>
+                    <li><strong>Host:</strong> localhost (for local PostgreSQL server)</li>
+                    <li><strong>Port:</strong> 5432 (default PostgreSQL port)</li>
+                    <li><strong>Database:</strong> Your database name</li>
+                    <li><strong>Username:</strong> Your PostgreSQL username</li>
+                    <li><strong>Password:</strong> Your PostgreSQL password</li>
+                </ul>
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>Tip:</strong> Use "Test Connection" to verify your settings before saving.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('testBtn').addEventListener('click', function() {
+    const form = document.getElementById('configForm');
+    const formData = new FormData(form);
+    
+    // Change form action temporarily for testing
+    const originalAction = form.action;
+    form.action = "{{ url_for('test_connection') }}";
+    
+    // Submit form for testing
+    form.submit();
+});
+</script>
+{% endblock %}

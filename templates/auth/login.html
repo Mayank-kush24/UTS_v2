@@ -1,0 +1,582 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - DataVault Pro{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- Left side - Enhanced Branding -->
+        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center bg-gradient position-relative overflow-hidden">
+            <!-- Animated Background Elements -->
+            <div class="floating-elements">
+                <div class="floating-element element-1"></div>
+                <div class="floating-element element-2"></div>
+                <div class="floating-element element-3"></div>
+                <div class="floating-element element-4"></div>
+            </div>
+            
+            <!-- Background Pattern -->
+            <div class="position-absolute w-100 h-100 opacity-20" style="background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="15" height="15" patternUnits="userSpaceOnUse"><path d="M 15 0 L 0 0 0 15" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');"></div>
+            
+            <div class="text-center text-white position-relative z-3 px-5">
+                <!-- Enhanced Logo & Branding -->
+                <div class="mb-5">
+                    <div class="brand-logo mb-4">
+                        <div class="logo-container">
+                            <div class="logo-primary">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div class="logo-overlay">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <h1 class="brand-title fw-bold mb-3">DataVault Pro</h1>
+                    <p class="lead fw-medium opacity-90 mb-0">Enterprise-grade PostgreSQL management platform</p>
+                    <small class="opacity-75 d-block mt-2">Trusted by 10,000+ developers worldwide</small>
+                </div>
+                
+                <!-- Enhanced Features Grid -->
+                <div class="row text-center g-4 mt-4">
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="feature-icon mb-3">
+                                <i class="fas fa-shield-check"></i>
+                            </div>
+                            <h6 class="fw-semibold mb-2">Bank-Level Security</h6>
+                            <small class="opacity-80">End-to-end encryption</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="feature-icon mb-3">
+                                <i class="fas fa-rocket"></i>
+                            </div>
+                            <h6 class="fw-semibold mb-2">Lightning Fast</h6>
+                            <small class="opacity-80">Sub-second queries</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="feature-icon mb-3">
+                                <i class="fas fa-users-cog"></i>
+                            </div>
+                            <h6 class="fw-semibold mb-2">Team Ready</h6>
+                            <small class="opacity-80">Built for collaboration</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Trust Indicators -->
+                <div class="trust-indicators mt-5">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="trust-item">
+                                <i class="fas fa-certificate text-warning mb-2"></i>
+                                <small class="d-block opacity-75">SOC 2 Certified</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="trust-item">
+                                <i class="fas fa-globe text-info mb-2"></i>
+                                <small class="d-block opacity-75">99.9% Uptime</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="trust-item">
+                                <i class="fas fa-headset text-success mb-2"></i>
+                                <small class="d-block opacity-75">24/7 Support</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right side - Professional Login Form -->
+        <div class="col-lg-6 d-flex align-items-center justify-content-center bg-light position-relative">
+            <div class="login-container w-100 px-4">
+                <!-- Mobile Logo -->
+                <div class="text-center mb-4 d-lg-none">
+                    <div class="mobile-logo mb-3">
+                        <i class="fas fa-database fa-3x text-primary"></i>
+                        <i class="fas fa-shield-alt fa-lg text-accent mobile-logo-overlay"></i>
+                    </div>
+                    <h3 class="fw-bold text-gradient">DataVault Pro</h3>
+                </div>
+                
+                <div class="login-card card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <!-- Header -->
+                        <div class="text-center mb-5">
+                            <h2 class="login-title fw-bold mb-2">Welcome Back</h2>
+                            <p class="login-subtitle text-muted mb-0">Sign in to access your database dashboard</p>
+                        </div>
+
+                        <!-- Error Container -->
+                        <div id="errorContainer" class="mb-4">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% if messages %}
+                                    {% for category, message in messages %}
+                                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show login-alert" role="alert">
+                                            <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                                            {{ message }}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        
+                        <form method="POST" id="loginForm" class="login-form" novalidate>
+                            <!-- Username Field -->
+                            <div class="form-group mb-4">
+                                <label for="username" class="form-label fw-semibold text-dark mb-2">
+                                    <i class="fas fa-user me-2 text-primary"></i>Username or Email
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg login-input" 
+                                       id="username" 
+                                       name="username" 
+                                       placeholder="Enter your username or email"
+                                       required 
+                                       autocomplete="username"
+                                       aria-describedby="usernameHelp">
+                                <div class="invalid-feedback">
+                                    <i class="fas fa-exclamation-circle me-1"></i>Please enter a valid username or email.
+                                </div>
+                            </div>
+                            
+                            <!-- Password Field -->
+                            <div class="form-group mb-4">
+                                <label for="password" class="form-label fw-semibold text-dark mb-2">
+                                    <i class="fas fa-lock me-2 text-primary"></i>Password
+                                </label>
+                                <div class="password-input-container position-relative">
+                                    <input type="password" 
+                                           class="form-control form-control-lg login-input" 
+                                           id="password" 
+                                           name="password" 
+                                           placeholder="Enter your password"
+                                           required 
+                                           autocomplete="current-password"
+                                           aria-describedby="passwordHelp">
+                                    <button type="button" 
+                                            class="password-toggle" 
+                                            onclick="togglePassword()" 
+                                            aria-label="Toggle password visibility">
+                                        <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                                    </button>
+                                </div>
+                                <div class="invalid-feedback">
+                                    <i class="fas fa-exclamation-circle me-1"></i>Password is required.
+                                </div>
+                                <!-- Password strength indicator -->
+                                <div class="password-strength mt-2 d-none">
+                                    <div class="strength-bar">
+                                        <div class="strength-fill"></div>
+                                    </div>
+                                    <small class="strength-text text-muted"></small>
+                                </div>
+                            </div>
+                            
+                            <!-- Remember Me Modern Toggle -->
+                            <div class="form-group mb-4">
+                                <div class="remember-me-container d-flex align-items-center">
+                                    <label class="toggle-switch me-3">
+                                        <input type="checkbox" id="remember_me" name="remember_me">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <div class="remember-text">
+                                        <label for="remember_me" class="fw-semibold text-dark mb-0">Remember me</label>
+                                        <small class="text-muted d-block">Stay signed in for faster access</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Sign In Button -->
+                            <div class="d-grid mb-4">
+                                <button type="submit" class="btn btn-primary btn-lg sign-in-btn">
+                                    <span class="btn-text">
+                                        <i class="fas fa-sign-in-alt me-2"></i>Sign In Securely
+                                    </span>
+                                    <div class="btn-loading d-none">
+                                        <div class="spinner-border spinner-border-sm me-2"></div>
+                                        Signing in...
+                                    </div>
+                                </button>
+                            </div>
+                            
+                            <!-- Divider -->
+                            <div class="divider my-4">
+                                <span class="divider-text text-muted fw-medium">or continue with</span>
+                            </div>
+                            
+                            <!-- SSO Options -->
+                            <div class="sso-options mb-4">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <button type="button" class="btn btn-outline-secondary btn-lg w-100 sso-btn google-btn">
+                                            <i class="fab fa-google me-2"></i>Google
+                                        </button>
+                                    </div>
+                                    <div class="col-6">
+                                        <button type="button" class="btn btn-outline-dark btn-lg w-100 sso-btn github-btn">
+                                            <i class="fab fa-github me-2"></i>GitHub
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <!-- Register Link -->
+                        <div class="text-center">
+                            <p class="text-muted mb-0">
+                                New to DataVault Pro? 
+                                <a href="{{ url_for('register') }}" class="btn btn-link p-0 fw-semibold register-link">
+                                    Create your account <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Security Badge -->
+                <div class="security-section text-center mt-4">
+                    <div class="security-badge mb-3">
+                        <i class="fas fa-shield-check text-success me-2"></i>
+                        <span class="fw-semibold">256-bit SSL encrypted connection</span>
+                    </div>
+                    
+                    <!-- Footer Links -->
+                    <div class="footer-links">
+                        <small class="text-muted">
+                            By signing in, you agree to our 
+                            <a href="#" class="text-primary text-decoration-none">Terms of Service</a> and 
+                            <a href="#" class="text-primary text-decoration-none">Privacy Policy</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Company Branding -->
+            <div class="company-branding position-absolute bottom-0 end-0 p-4">
+                <small class="text-muted">
+                    <i class="fas fa-code me-1"></i>
+                    Powered by <strong class="text-primary">Hack2skill</strong>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Enhanced Password Toggle with Security Icons
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('passwordToggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.className = 'fas fa-eye-slash';
+        toggleIcon.parentElement.setAttribute('aria-label', 'Hide password');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.className = 'fas fa-eye';
+        toggleIcon.parentElement.setAttribute('aria-label', 'Show password');
+    }
+}
+
+// Enhanced Form Validation and UX
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('loginForm');
+    const inputs = form.querySelectorAll('input[required]');
+    const submitBtn = form.querySelector('.sign-in-btn');
+    
+    // Auto-focus username field
+    document.getElementById('username').focus();
+    
+    // Real-time validation
+    inputs.forEach(input => {
+        input.addEventListener('blur', validateField);
+        input.addEventListener('input', function() {
+            clearValidation(this);
+            if (this.id === 'password') {
+                checkPasswordStrength(this.value);
+            }
+        });
+        
+        // Enhanced focus effects
+        input.addEventListener('focus', function() {
+            this.closest('.form-group').classList.add('focused');
+        });
+        
+        input.addEventListener('blur', function() {
+            this.closest('.form-group').classList.remove('focused');
+        });
+    });
+    
+    // Form submission with enhanced loading state
+    form.addEventListener('submit', function(e) {
+        if (!validateForm()) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Show loading state
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+        
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        btnText.classList.add('d-none');
+        btnLoading.classList.remove('d-none');
+        
+        // Add some visual feedback
+        submitBtn.style.transform = 'scale(0.98)';
+        
+        // Reset if needed (fallback)
+        setTimeout(() => {
+            if (submitBtn.disabled) {
+                resetSubmitButton();
+            }
+        }, 10000);
+    });
+    
+    function validateField(e) {
+        const field = e.target;
+        const isValid = field.checkValidity();
+        
+        field.classList.toggle('is-valid', isValid && field.value.length > 0);
+        field.classList.toggle('is-invalid', !isValid && field.value.length > 0);
+        
+        // Show custom validation messages
+        if (!isValid && field.value.length > 0) {
+            showFieldError(field);
+        }
+    }
+    
+    function clearValidation(field) {
+        field.classList.remove('is-valid', 'is-invalid');
+    }
+    
+    function validateForm() {
+        let isValid = true;
+        const errors = [];
+        
+        inputs.forEach(input => {
+            if (!input.checkValidity()) {
+                input.classList.add('is-invalid');
+                isValid = false;
+                
+                if (input.id === 'username') {
+                    errors.push('Please enter a valid username or email');
+                } else if (input.id === 'password') {
+                    errors.push('Password is required');
+                }
+            } else {
+                input.classList.add('is-valid');
+            }
+        });
+        
+        if (!isValid) {
+            showInlineError(errors[0]);
+            // Shake animation for form
+            form.classList.add('shake');
+            setTimeout(() => form.classList.remove('shake'), 600);
+        }
+        
+        return isValid;
+    }
+    
+    function showFieldError(field) {
+        // Add custom error styling
+        field.style.borderColor = 'var(--error)';
+        field.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+    }
+    
+    function showInlineError(message) {
+        const errorContainer = document.getElementById('errorContainer');
+        const existingAlert = errorContainer.querySelector('.alert');
+        
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger alert-dismissible fade show login-alert';
+        alert.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        errorContainer.appendChild(alert);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+    
+    function resetSubmitButton() {
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+        
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('loading');
+        btnText.classList.remove('d-none');
+        btnLoading.classList.add('d-none');
+        submitBtn.style.transform = '';
+    }
+    
+    // Password strength checker
+    function checkPasswordStrength(password) {
+        const strengthContainer = document.querySelector('.password-strength');
+        const strengthFill = document.querySelector('.strength-fill');
+        const strengthText = document.querySelector('.strength-text');
+        
+        if (password.length === 0) {
+            strengthContainer.classList.add('d-none');
+            return;
+        }
+        
+        strengthContainer.classList.remove('d-none');
+        
+        let strength = 0;
+        let feedback = '';
+        
+        // Basic strength calculation
+        if (password.length >= 8) strength += 25;
+        if (/[a-z]/.test(password)) strength += 15;
+        if (/[A-Z]/.test(password)) strength += 15;
+        if (/[0-9]/.test(password)) strength += 15;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 30;
+        
+        // Set strength level and color
+        if (strength < 30) {
+            strengthFill.style.width = '25%';
+            strengthFill.style.backgroundColor = 'var(--error)';
+            feedback = 'Weak password';
+        } else if (strength < 60) {
+            strengthFill.style.width = '50%';
+            strengthFill.style.backgroundColor = 'var(--warning)';
+            feedback = 'Fair password';
+        } else if (strength < 80) {
+            strengthFill.style.width = '75%';
+            strengthFill.style.backgroundColor = '#3b82f6';
+            feedback = 'Good password';
+        } else {
+            strengthFill.style.width = '100%';
+            strengthFill.style.backgroundColor = 'var(--success)';
+            feedback = 'Strong password';
+        }
+        
+        strengthText.textContent = feedback;
+    }
+});
+
+// SSO Button Handlers
+document.querySelectorAll('.sso-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const provider = this.classList.contains('google-btn') ? 'Google' : 'GitHub';
+        
+        // Add loading state
+        const originalContent = this.innerHTML;
+        this.disabled = true;
+        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Connecting...';
+        
+        // Simulate SSO redirect (replace with actual implementation)
+        setTimeout(() => {
+            console.log(`SSO login with ${provider} initiated`);
+            showToast(`${provider} SSO will be available soon`, 'info');
+            
+            // Reset button
+            this.disabled = false;
+            this.innerHTML = originalContent;
+        }, 2000);
+    });
+});
+
+// Enhanced Toast Function
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const iconMap = {
+        'success': 'fas fa-check-circle',
+        'error': 'fas fa-exclamation-circle',
+        'info': 'fas fa-info-circle',
+        'warning': 'fas fa-exclamation-triangle'
+    };
+    
+    const colorMap = {
+        'success': 'success',
+        'error': 'danger',
+        'info': 'info',
+        'warning': 'warning'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${colorMap[type]} border-0 shadow-lg`;
+    toast.setAttribute('role', 'alert');
+    toast.style.borderRadius = '12px';
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="${iconMap[type]} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: 4000
+    });
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    container.style.zIndex = '1055';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Alt + L to focus login
+    if (e.altKey && e.key === 'l') {
+        e.preventDefault();
+        document.getElementById('username').focus();
+    }
+    
+    // Ctrl + Enter to submit form
+    if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('loginForm').requestSubmit();
+    }
+});
+
+// Add accessibility announcements
+const announcer = document.createElement('div');
+announcer.setAttribute('aria-live', 'polite');
+announcer.setAttribute('aria-atomic', 'true');
+announcer.className = 'sr-only';
+document.body.appendChild(announcer);
+
+function announce(message) {
+    announcer.textContent = message;
+}
+</script>
+{% endblock %}

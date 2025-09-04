@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}Register - PostgreSQL Data Viewer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- Left side - Registration Form -->
+        <div class="col-lg-6 d-flex align-items-center justify-content-center">
+            <div class="w-100" style="max-width: 450px;">
+                <div class="card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <div class="d-lg-none mb-3">
+                                <i class="fas fa-database fa-3x text-primary"></i>
+                            </div>
+                            <h2 class="fw-bold text-gradient">Create Account</h2>
+                            <p class="text-muted fw-medium">Join the PostgreSQL Data Viewer community</p>
+                        </div>
+                        
+                        <form method="POST" id="registerForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label fw-semibold">
+                                            <i class="fas fa-user me-1"></i>Username <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="username" 
+                                               name="username" 
+                                               placeholder="Choose a username"
+                                               required 
+                                               minlength="3"
+                                               autocomplete="username">
+                                        <div class="form-text">At least 3 characters</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="full_name" class="form-label fw-semibold">
+                                            <i class="fas fa-id-card me-1"></i>Full Name
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="full_name" 
+                                               name="full_name" 
+                                               placeholder="Your full name"
+                                               autocomplete="name">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label fw-semibold">
+                                    <i class="fas fa-envelope me-1"></i>Email Address <span class="text-danger">*</span>
+                                </label>
+                                <input type="email" 
+                                       class="form-control" 
+                                       id="email" 
+                                       name="email" 
+                                       placeholder="your.email@example.com"
+                                       required 
+                                       autocomplete="email">
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label fw-semibold">
+                                            <i class="fas fa-lock me-1"></i>Password <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="position-relative">
+                                            <input type="password" 
+                                                   class="form-control" 
+                                                   id="password" 
+                                                   name="password" 
+                                                   placeholder="Create password"
+                                                   required 
+                                                   minlength="6"
+                                                   autocomplete="new-password">
+                                            <button type="button" 
+                                                    class="btn btn-link position-absolute end-0 top-50 translate-middle-y pe-3" 
+                                                    onclick="togglePassword('password', 'passwordToggleIcon')" 
+                                                    style="border: none; background: none;">
+                                                <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text">Minimum 6 characters</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="confirm_password" class="form-label fw-semibold">
+                                            <i class="fas fa-lock-alt me-1"></i>Confirm <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="position-relative">
+                                            <input type="password" 
+                                                   class="form-control" 
+                                                   id="confirm_password" 
+                                                   name="confirm_password" 
+                                                   placeholder="Confirm password"
+                                                   required 
+                                                   autocomplete="new-password">
+                                            <button type="button" 
+                                                    class="btn btn-link position-absolute end-0 top-50 translate-middle-y pe-3" 
+                                                    onclick="togglePassword('confirm_password', 'confirmToggleIcon')" 
+                                                    style="border: none; background: none;">
+                                                <i class="fas fa-eye" id="confirmToggleIcon"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="password-strength">
+                                    <small class="text-muted">Password strength:</small>
+                                    <div class="progress mt-1" style="height: 4px;">
+                                        <div class="progress-bar" id="passwordStrength" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small id="passwordStrengthText" class="text-muted"></small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="agree_terms" required>
+                                    <label class="form-check-label fw-medium" for="agree_terms">
+                                        I agree to the <a href="#" class="text-primary text-decoration-none">Terms of Service</a> 
+                                        and <a href="#" class="text-primary text-decoration-none">Privacy Policy</a>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid mb-4">
+                                <button type="submit" class="btn btn-primary btn-lg icon-hover">
+                                    <i class="fas fa-user-plus me-1"></i>Create Account
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="text-center">
+                            <p class="text-muted mb-0">
+                                Already have an account? 
+                                <a href="{{ url_for('login') }}" class="text-primary text-decoration-none fw-semibold">
+                                    Sign in here
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-check me-1"></i>
+                        We never share your personal information
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right side - Features -->
+        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center bg-gradient">
+            <div class="text-center text-white">
+                                    <div class="mb-5">
+                        <div class="mb-4">
+                            <i class="fas fa-rocket fa-4x mb-3" style="color: #60a5fa;"></i>
+                        </div>
+                        <h2 class="fw-bold">Get Started Today</h2>
+                        <p class="lead fw-medium">Join thousands of developers managing PostgreSQL databases</p>
+                    </div>
+                
+                <div class="row text-center">
+                    <div class="col-12 mb-4">
+                        <div class="card glass-effect text-white border-0 p-3">
+                            <div class="card-body">
+                                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                <h5>Real-time Analytics</h5>
+                                <p class="mb-0">Monitor your database performance with live dashboards</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 mb-4">
+                        <div class="card glass-effect text-white border-0 p-3">
+                            <div class="card-body">
+                                <i class="fas fa-database fa-2x mb-2"></i>
+                                <h5>Multiple Databases</h5>
+                                <p class="mb-0">Manage multiple PostgreSQL servers from one interface</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card glass-effect text-white border-0 p-3">
+                            <div class="card-body">
+                                <i class="fas fa-lock fa-2x mb-2"></i>
+                                <h5>Enterprise Security</h5>
+                                <p class="mb-0">Bank-level encryption and security protocols</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePassword(inputId, iconId) {
+    const passwordInput = document.getElementById(inputId);
+    const toggleIcon = document.getElementById(iconId);
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.className = 'fas fa-eye-slash';
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.className = 'fas fa-eye';
+    }
+}
+
+// Password strength checker
+document.getElementById('password').addEventListener('input', function() {
+    const password = this.value;
+    const strengthBar = document.getElementById('passwordStrength');
+    const strengthText = document.getElementById('passwordStrengthText');
+    
+    let strength = 0;
+    let text = '';
+    let color = '';
+    
+    if (password.length >= 6) strength += 20;
+    if (password.length >= 8) strength += 20;
+    if (/[a-z]/.test(password)) strength += 20;
+    if (/[A-Z]/.test(password)) strength += 20;
+    if (/[0-9]/.test(password)) strength += 10;
+    if (/[^A-Za-z0-9]/.test(password)) strength += 10;
+    
+    if (strength < 40) {
+        text = 'Weak';
+        color = 'bg-danger';
+    } else if (strength < 70) {
+        text = 'Medium';
+        color = 'bg-warning';
+    } else {
+        text = 'Strong';
+        color = 'bg-success';
+    }
+    
+    strengthBar.style.width = strength + '%';
+    strengthBar.className = `progress-bar ${color}`;
+    strengthText.textContent = text;
+    strengthText.className = `text-${color.replace('bg-', '')}`;
+});
+
+// Confirm password validation
+document.getElementById('confirm_password').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = this.value;
+    
+    if (confirmPassword && password !== confirmPassword) {
+        this.setCustomValidity('Passwords do not match');
+        this.classList.add('is-invalid');
+    } else {
+        this.setCustomValidity('');
+        this.classList.remove('is-invalid');
+        if (confirmPassword) this.classList.add('is-valid');
+    }
+});
+
+// Form validation
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const agreeTerms = document.getElementById('agree_terms').checked;
+    
+    if (password !== confirmPassword) {
+        e.preventDefault();
+        showToast('Passwords do not match', 'error');
+        return;
+    }
+    
+    if (!agreeTerms) {
+        e.preventDefault();
+        showToast('Please agree to the Terms of Service', 'error');
+        return;
+    }
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-1"></div>Creating account...';
+    
+    // Re-enable if form submission fails
+    setTimeout(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }, 10000);
+});
+
+// Auto-focus username field
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('username').focus();
+});
+
+// Toast notification function
+function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    container.style.zIndex = '1055';
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+{% endblock %}
