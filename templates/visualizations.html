@@ -1,0 +1,2569 @@
+{% extends "base.html" %}
+
+{% block title %}Database Visualizations{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">📊 Database Visualizations</h1>
+            <p class="text-muted">Visual insights and analytics from your database</p>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="refreshAllCharts()">
+                <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading visualization data...</p>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div id="dashboardContent" style="display: none;">
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Tables</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalTables">0</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-table fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total Columns</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalColumns">0</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-columns fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Database Size</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="databaseSize">0 bytes</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-database fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-warning shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Avg Columns/Table</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="avgColumns">0</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row mb-4">
+            <div class="col-xl-8 col-lg-7">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary">Table Row Counts</h6>
+                        <div class="dropdown no-arrow">
+                            <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right shadow">
+                                <a class="dropdown-item" href="#" onclick="switchChart('tableRowsChart', 'bar')">Bar Chart</a>
+                                <a class="dropdown-item" href="#" onclick="switchChart('tableRowsChart', 'line')">Line Chart</a>
+                                <a class="dropdown-item" href="#" onclick="switchChart('tableRowsChart', 'horizontalBar')">Horizontal Bar</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-area">
+                            <canvas id="tableRowsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-4 col-lg-5">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary">Data Types Distribution</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-pie pt-4 pb-2">
+                            <canvas id="dataTypesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row mb-4">
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Table Sizes (Bytes)</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-area">
+                            <canvas id="tableSizesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Column Count per Table</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-area">
+                            <canvas id="columnCountChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Selection and Analysis -->
+        <div class="row mb-4">
+            <div class="col-xl-12">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Table Analysis</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="tableSelect" class="form-label">Select Table for Detailed Analysis:</label>
+                                <select class="form-control" id="tableSelect" onchange="analyzeTable()">
+                                    <option value="">-- Select a table --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button class="btn btn-info me-2" onclick="analyzeTable()" id="analyzeBtn" disabled>
+                                    <i class="fas fa-chart-line"></i> Analyze Table
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="debugTablePopulation()" title="Refresh table list">
+                                    <i class="fas fa-sync"></i> Refresh Tables
+                                </button>
+                                <button class="btn btn-warning btn-sm ms-1" onclick="testDatabaseConnection()" title="Test database connection">
+                                    <i class="fas fa-database"></i> Test DB
+                                </button>
+                                <button class="btn btn-danger btn-sm ms-1" onclick="debugConnection()" title="Debug connection details">
+                                    <i class="fas fa-bug"></i> Debug
+                                </button>
+                                <button class="btn btn-info btn-sm ms-1" onclick="testDropdownElements()" title="Test dropdown elements">
+                                    <i class="fas fa-list"></i> Test Dropdowns
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="tableAnalysisResults" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="card border-info">
+                                        <div class="card-header bg-info text-white">
+                                            <h6 class="m-0">Column Statistics</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm" id="columnStatsTable">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Column</th>
+                                                            <th>Type</th>
+                                                            <th>Total Count</th>
+                                                            <th>Non-Null Count</th>
+                                                            <th>Null %</th>
+                                                            <th>Additional Stats</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card border-success">
+                                        <div class="card-header bg-success text-white">
+                                            <h6 class="m-0">Column Data Quality</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="dataQualityChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Chart Builder -->
+        <div class="row mb-4">
+            <div class="col-xl-12">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Custom Chart Builder</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="customTableSelect" class="form-label">Select Table:</label>
+                                <select class="form-control" id="customTableSelect" onchange="loadTableColumns()">
+                                    <option value="">-- Select a table --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="customXColumn" class="form-label">X Column:</label>
+                                <select class="form-control" id="customXColumn">
+                                    <option value="">-- Select X column --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="customYColumn" class="form-label">Y Column:</label>
+                                <select class="form-control" id="customYColumn">
+                                    <option value="">-- Select Y column --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="customChartType" class="form-label">Chart Type:</label>
+                                <select class="form-control" id="customChartType">
+                                    <option value="bar">Bar Chart</option>
+                                    <option value="line">Line Chart</option>
+                                    <option value="pie">Pie Chart</option>
+                                    <option value="doughnut">Doughnut Chart</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="customAggregation" class="form-label">Aggregation:</label>
+                                <select class="form-control" id="customAggregation">
+                                    <option value="count">Count</option>
+                                    <option value="sum">Sum</option>
+                                    <option value="avg">Average</option>
+                                    <option value="min">Minimum</option>
+                                    <option value="max">Maximum</option>
+                                </select>
+                            </div>
+                            <div class="col-md-9 d-flex align-items-end">
+                                <button class="btn btn-primary" id="createCustomChartBtn" onclick="createCustomChart()" disabled>
+                                    <i class="fas fa-chart-bar"></i> Create Chart
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="customChartContainer" style="display: none;">
+                            <h6 id="customChartTitle" class="text-center mb-3"></h6>
+                            <div class="chart-area">
+                                <canvas id="customChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Geographic Chart -->
+        <div class="row mb-4">
+            <div class="col-xl-12">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Geographic Data Visualization</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="geoTableSelect" class="form-label">Select Table:</label>
+                                <select class="form-control" id="geoTableSelect" onchange="loadGeoColumns()">
+                                    <option value="">-- Select a table --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="geoLocationColumn" class="form-label">Location Column:</label>
+                                <select class="form-control" id="geoLocationColumn">
+                                    <option value="">-- Select location column --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="geoValueColumn" class="form-label">Value Column:</label>
+                                <select class="form-control" id="geoValueColumn">
+                                    <option value="">-- Select value column --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="geoAggregation" class="form-label">Aggregation:</label>
+                                <select class="form-control" id="geoAggregation">
+                                    <option value="count">Count</option>
+                                    <option value="sum">Sum</option>
+                                    <option value="avg">Average</option>
+                                    <option value="min">Minimum</option>
+                                    <option value="max">Maximum</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Filter Controls -->
+                        <div class="row mb-3" id="geoFilterSection" style="display: none;">
+                            <div class="col-12">
+                                <div class="card border-info">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="fas fa-filter text-info"></i> Data Filters</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="geoFilterColumn" class="form-label">Filter Column:</label>
+                                                <select class="form-control" id="geoFilterColumn">
+                                                    <option value="">-- No Filter --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="geoFilterOperator" class="form-label">Operator:</label>
+                                                <select class="form-control" id="geoFilterOperator">
+                                                    <option value="=">=</option>
+                                                    <option value="!=">!=</option>
+                                                    <option value=">">></option>
+                                                    <option value="<"><</option>
+                                                    <option value=">=">>=</option>
+                                                    <option value="<="><=</option>
+                                                    <option value="LIKE">Contains</option>
+                                                    <option value="NOT LIKE">Does not contain</option>
+                                                    <option value="IN">In list</option>
+                                                    <option value="IS NULL">Is null</option>
+                                                    <option value="IS NOT NULL">Is not null</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label for="geoFilterValue" class="form-label">Filter Value:</label>
+                                                <input type="text" class="form-control" id="geoFilterValue" placeholder="Enter filter value">
+                                                <small class="text-muted">For 'In list', use comma-separated values</small>
+                                            </div>
+                                            <div class="col-md-3 d-flex align-items-end">
+                                                <button class="btn btn-success me-2" onclick="addGeoFilter()">
+                                                    <i class="fas fa-plus"></i> Add Filter
+                                                </button>
+                                                <button class="btn btn-warning" onclick="clearGeoFilters()">
+                                                    <i class="fas fa-trash"></i> Clear All
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Active Filters Display -->
+                                        <div class="row mt-3">
+                                            <div class="col-12">
+                                                <div id="activeGeoFilters" class="mb-2"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-12 d-flex align-items-end">
+                                <button class="btn btn-info me-2" id="createGeoBtn" onclick="createGeoChart()" disabled>
+                                    <i class="fas fa-globe"></i> Create Geographic Chart
+                                </button>
+                                <button class="btn btn-secondary" id="toggleGeoFiltersBtn" onclick="toggleGeoFilters()" disabled>
+                                    <i class="fas fa-filter"></i> Toggle Filters
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="geoVisualizationContainer" style="display: none;">
+                            <h6 id="geoChartTitle" class="text-center mb-3"></h6>
+                            
+                            <!-- Map Visualization -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0"><i class="fas fa-map-marked-alt me-2"></i>Interactive Map</h6>
+                                        </div>
+                                        <div class="card-body p-0">
+                                            <div id="geoMap" style="height: 400px; width: 100%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Geographic Statistics -->
+                            <div class="row mb-4">
+                                <div class="col-md-4">
+                                    <div class="card border-info">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title text-info">Total Locations</h6>
+                                            <h4 class="text-info mb-0" id="totalLocations">0</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card border-success">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title text-success">Top Location</h6>
+                                            <h6 class="text-success mb-0" id="topLocation">N/A</h6>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card border-warning">
+                                        <div class="card-body text-center">
+                                            <h6 class="card-title text-warning">Total Value</h6>
+                                            <h4 class="text-warning mb-0" id="totalValue">0</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Charts Row -->
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Geographic Distribution</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="chart-area">
+                                                <canvas id="geoChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Distribution Overview</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="chart-area">
+                                                <canvas id="geoDistributionChart"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<script>
+// Immediate debug logging
+console.log('Script loaded, document state:', document.readyState);
+console.log('Body exists at script load:', !!document.body);
+
+// Test function to verify basic functionality
+function testBasicFunctionality() {
+    console.log('=== Testing Basic Functionality ===');
+    
+    try {
+        // Test 1: Can we find any element by ID?
+        const testElement = document.getElementById('loadingIndicator');
+        console.log('Test 1 - loadingIndicator found:', !!testElement);
+        
+        if (testElement) {
+            // Test 2: Can we safely set textContent?
+            try {
+                const originalContent = testElement.textContent;
+                testElement.textContent = 'Test successful';
+                setTimeout(() => {
+                    testElement.textContent = originalContent;
+                }, 100);
+                console.log('Test 2 - textContent works: true');
+            } catch (e) {
+                console.log('Test 2 - textContent failed:', e.message);
+            }
+            
+            // Test 3: Can we safely use innerHTML?
+            try {
+                const originalHTML = testElement.innerHTML;
+                testElement.innerHTML = '<div>Test</div>';
+                setTimeout(() => {
+                    testElement.innerHTML = originalHTML;
+                }, 100);
+                console.log('Test 3 - innerHTML works: true');
+            } catch (e) {
+                console.log('Test 3 - innerHTML failed:', e.message);
+            }
+        }
+        
+        // Test 4: List all elements with IDs
+        const allElements = document.querySelectorAll('[id]');
+        console.log('Test 4 - Elements with IDs found:', allElements.length);
+        allElements.forEach(el => {
+            console.log(`  - ${el.id}: ${el.tagName}`);
+        });
+        
+        console.log('=== End Basic Tests ===');
+        
+    } catch (error) {
+        console.error('Basic functionality test failed:', error);
+    }
+}
+
+// Run test when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', testBasicFunctionality);
+} else {
+    testBasicFunctionality();
+}
+// Global variables for charts
+let dashboardData = null;
+let tableRowsChart = null;
+let dataTypesChart = null;
+let tableSizesChart = null;
+let columnCountChart = null;
+let dataQualityChart = null;
+let customChart = null;
+let geoChart = null;
+let geoDistributionChart = null;
+let geoMap = null;
+
+// Chart color schemes
+const colorSchemes = {
+    primary: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69'],
+    secondary: ['rgba(78, 115, 223, 0.8)', 'rgba(28, 200, 138, 0.8)', 'rgba(54, 185, 204, 0.8)', 'rgba(246, 194, 62, 0.8)', 'rgba(231, 74, 59, 0.8)', 'rgba(133, 135, 150, 0.8)'],
+    background: ['rgba(78, 115, 223, 0.1)', 'rgba(28, 200, 138, 0.1)', 'rgba(54, 185, 204, 0.1)', 'rgba(246, 194, 62, 0.1)', 'rgba(231, 74, 59, 0.1)', 'rgba(133, 135, 150, 0.1)']
+};
+
+// Utility function to safely destroy chart
+function destroyChart(chart) {
+    if (chart && typeof chart.destroy === 'function') {
+        chart.destroy();
+        return null;
+    }
+    return chart;
+}
+
+// Initialize dashboard function
+function initializeDashboard(retryCount = 0) {
+    console.log(`Initializing dashboard (attempt ${retryCount + 1})`);
+    
+    // Debug: Check entire page structure
+    console.log('Document ready state:', document.readyState);
+    console.log('Document body exists:', !!document.body);
+    console.log('Number of elements in body:', document.body ? document.body.children.length : 'No body');
+    
+    // Check if required elements exist
+    const requiredElements = ['loadingIndicator', 'dashboardContent', 'totalTables', 'totalColumns', 'databaseSize', 'avgColumns'];
+    const missingElements = [];
+    
+    requiredElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (!element) {
+            missingElements.push(id);
+        } else {
+            console.log(`Found element: ${id}`);
+        }
+    });
+    
+    if (missingElements.length > 0) {
+        console.error('Missing required elements:', missingElements);
+        
+        // Try again up to 10 times with increasing delay
+        if (retryCount < 10) {
+            const delay = Math.min(100 * (retryCount + 1), 1000);
+            console.log(`Retrying in ${delay}ms...`);
+            setTimeout(() => initializeDashboard(retryCount + 1), delay);
+            return;
+        } else {
+            console.error('Failed to find all required elements after 10 attempts');
+            alert('Dashboard initialization failed: Missing required page elements. Please refresh the page.');
+            return;
+        }
+    }
+    
+    console.log('All required elements found, loading dashboard data');
+    
+    // Add a small delay to ensure everything is fully ready
+    setTimeout(() => {
+        loadDashboardData();
+    }, 50);
+}
+
+// Global error handler for unhandled errors
+window.addEventListener('error', function(event) {
+    console.error('Unhandled error:', event.error);
+    if (event.error && event.error.message && event.error.message.includes('innerHTML')) {
+        // This is likely our innerHTML error, show a simple fallback
+        showSimpleFallback('Dashboard loading failed due to page structure issue. Please refresh the page.');
+    }
+});
+
+// Simple fallback function that works without DOM dependencies
+function showSimpleFallback(message) {
+    console.log('Showing simple fallback message');
+    
+    // Try to find the main container and replace its content
+    const container = document.querySelector('.container-fluid') || document.body;
+    if (container) {
+        const fallbackHTML = `
+            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+                <h2 style="color: #dc3545;">⚠️ Dashboard Loading Issue</h2>
+                <p style="color: #6c757d; margin: 20px 0;">${message}</p>
+                <button onclick="window.location.reload()" style="
+                    background-color: #007bff; 
+                    color: white; 
+                    border: none; 
+                    padding: 10px 20px; 
+                    border-radius: 5px; 
+                    cursor: pointer;
+                    font-size: 16px;
+                ">Refresh Page</button>
+            </div>
+        `;
+        
+        try {
+            container.innerHTML = fallbackHTML;
+        } catch (e) {
+            // Even this failed, use alert
+            alert(message + ' Please refresh the page manually.');
+        }
+    } else {
+        alert(message + ' Please refresh the page manually.');
+    }
+}
+
+// Load dashboard data on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+} else {
+    // DOM is already loaded
+    initializeDashboard();
+}
+
+async function loadDashboardData() {
+    console.log('Starting loadDashboardData...');
+    
+    try {
+        console.log('Fetching dashboard data from API...');
+        const response = await fetch('/api/visualizations/dashboard');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('API response received:', result);
+        
+        if (result.success) {
+            console.log('Processing successful response...');
+            dashboardData = result.data;
+            
+            // Safely update components
+            try {
+                updateSummaryCards();
+                console.log('Summary cards updated');
+            } catch (cardError) {
+                console.error('Error updating summary cards:', cardError);
+            }
+            
+            try {
+                createCharts();
+                console.log('Charts created');
+            } catch (chartError) {
+                console.error('Error creating charts:', chartError);
+            }
+            
+            try {
+                console.log('About to populate table selects...');
+                await populateTableSelect();
+                console.log('Table select population completed');
+            } catch (selectError) {
+                console.error('Error populating table selects:', selectError);
+                // Fallback: try to get tables directly
+                await populateTableSelectFallback();
+            }
+            
+            // Safely hide loading indicator and show content
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const dashboardContent = document.getElementById('dashboardContent');
+            
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+                console.log('Loading indicator hidden');
+            } else {
+                console.warn('Loading indicator element not found');
+            }
+            
+            if (dashboardContent) {
+                dashboardContent.style.display = 'block';
+                console.log('Dashboard content shown');
+            } else {
+                console.warn('Dashboard content element not found');
+            }
+        } else {
+            console.error('API returned error:', result.error);
+            displayErrorSafely('Failed to load dashboard data: ' + (result.error || 'Unknown error'));
+            
+            // If dashboard API fails, try to populate tables anyway
+            console.log('Dashboard API failed, attempting to populate tables directly...');
+            try {
+                await populateTableSelectFallback();
+            } catch (fallbackError) {
+                console.error('Fallback table population also failed:', fallbackError);
+            }
+        }
+    } catch (error) {
+        console.error('Dashboard loading error details:', {
+            message: error.message,
+            stack: error.stack,
+            error: error
+        });
+        
+        // More robust error display
+        displayErrorSafely('Error loading dashboard data: ' + error.message);
+        
+        // Even if dashboard loading fails, try to get tables
+        console.log('Dashboard loading failed, attempting to get tables anyway...');
+        try {
+            await populateTableSelectFallback();
+        } catch (fallbackError) {
+            console.error('Fallback table population failed:', fallbackError);
+        }
+    }
+}
+
+// Safe error display function
+function displayErrorSafely(message) {
+    console.log('Attempting to display error:', message);
+    
+    // Skip innerHTML completely and use textContent for safety
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    
+    if (loadingIndicator) {
+        try {
+            // Clear existing content safely
+            while (loadingIndicator.firstChild) {
+                loadingIndicator.removeChild(loadingIndicator.firstChild);
+            }
+            
+            // Create error element safely
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger';
+            errorDiv.setAttribute('role', 'alert');
+            
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-exclamation-triangle';
+            errorDiv.appendChild(icon);
+            
+            const textNode = document.createTextNode(' ' + message);
+            errorDiv.appendChild(textNode);
+            
+            loadingIndicator.appendChild(errorDiv);
+            console.log('Error displayed in loading indicator using DOM methods');
+            return;
+        } catch (domError) {
+            console.error('Failed to create error element:', domError);
+        }
+    } else {
+        console.warn('Loading indicator not found');
+    }
+    
+    // Fallback: try to create error in dashboard content
+    const dashboardContent = document.getElementById('dashboardContent');
+    if (dashboardContent) {
+        try {
+            // Use textContent for safety
+            dashboardContent.textContent = 'Error: ' + message;
+            dashboardContent.style.display = 'block';
+            dashboardContent.style.color = 'red';
+            dashboardContent.style.padding = '20px';
+            dashboardContent.style.textAlign = 'center';
+            console.log('Error displayed in dashboard content using textContent');
+            return;
+        } catch (textError) {
+            console.error('Failed to set textContent on dashboard content:', textError);
+        }
+    } else {
+        console.warn('Dashboard content not found');
+    }
+    
+    // Final fallback: browser alert
+    console.log('Using alert as final fallback');
+    alert('Dashboard Error: ' + message);
+}
+
+function updateSummaryCards() {
+    if (!dashboardData) return;
+    
+    // Safely update elements with error handling
+    const updateElement = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        } else {
+            console.warn(`Element with ID '${id}' not found`);
+        }
+    };
+    
+    updateElement('totalTables', dashboardData.summary.total_tables.toLocaleString());
+    updateElement('totalColumns', dashboardData.summary.total_columns.toLocaleString());
+    updateElement('databaseSize', dashboardData.database_size.total_size);
+    updateElement('avgColumns', dashboardData.summary.avg_columns_per_table.toFixed(1));
+}
+
+function createCharts() {
+    if (!dashboardData) return;
+    
+    createTableRowsChart();
+    createDataTypesChart();
+    createTableSizesChart();
+    createColumnCountChart();
+}
+
+function createTableRowsChart() {
+    const canvas = document.getElementById('tableRowsChart');
+    if (!canvas) {
+        console.warn('tableRowsChart canvas element not found');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+    
+    // Sort tables by row count and take top 15
+    const sortedTables = dashboardData.tables
+        .filter(table => table.row_count > 0)
+        .sort((a, b) => b.row_count - a.row_count)
+        .slice(0, 15);
+    
+    const labels = sortedTables.map(table => table.name);
+    const data = sortedTables.map(table => table.row_count);
+    
+    // Properly destroy existing chart
+    tableRowsChart = destroyChart(tableRowsChart);
+    
+    tableRowsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Row Count',
+                data: data,
+                backgroundColor: colorSchemes.secondary,
+                borderColor: colorSchemes.primary,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+}
+
+function createDataTypesChart() {
+    const canvas = document.getElementById('dataTypesChart');
+    if (!canvas) {
+        console.warn('dataTypesChart canvas element not found');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+    
+    const labels = dashboardData.data_types.map(dt => dt.type);
+    const data = dashboardData.data_types.map(dt => dt.count);
+    
+    // Properly destroy existing chart
+    dataTypesChart = destroyChart(dataTypesChart);
+    
+    dataTypesChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colorSchemes.primary,
+                borderColor: '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function createTableSizesChart() {
+    const canvas = document.getElementById('tableSizesChart');
+    if (!canvas) {
+        console.warn('tableSizesChart canvas element not found');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+    
+    // Filter tables with size data and sort by size
+    const sortedTables = dashboardData.tables
+        .filter(table => table.size_bytes > 0)
+        .sort((a, b) => b.size_bytes - a.size_bytes)
+        .slice(0, 10);
+    
+    const labels = sortedTables.map(table => table.name);
+    const data = sortedTables.map(table => table.size_bytes);
+    
+    // Properly destroy existing chart
+    tableSizesChart = destroyChart(tableSizesChart);
+    
+    tableSizesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Size (Bytes)',
+                data: data,
+                backgroundColor: colorSchemes.secondary.slice(2, 3),
+                borderColor: colorSchemes.primary.slice(2, 3),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatBytes(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createColumnCountChart() {
+    const canvas = document.getElementById('columnCountChart');
+    if (!canvas) {
+        console.warn('columnCountChart canvas element not found');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+    
+    const labels = dashboardData.tables.map(table => table.name);
+    const data = dashboardData.tables.map(table => table.column_count);
+    
+    // Properly destroy existing chart
+    columnCountChart = destroyChart(columnCountChart);
+    
+    columnCountChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Column Count',
+                data: data,
+                backgroundColor: colorSchemes.secondary.slice(1, 2),
+                borderColor: colorSchemes.primary.slice(1, 2),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function populateTableSelect() {
+    console.log('=== POPULATE TABLE SELECT START ===');
+    console.log('Populating table selects...');
+    console.log('Dashboard data available:', !!dashboardData);
+    console.log('Tables in dashboard data:', dashboardData?.tables?.length || 0);
+
+    const select = document.getElementById('tableSelect');
+    const customSelect = document.getElementById('customTableSelect');
+    const geoSelect = document.getElementById('geoTableSelect');
+
+    console.log('Dropdown elements found:', {
+        tableSelect: !!select,
+        customTableSelect: !!customSelect,
+        geoTableSelect: !!geoSelect
+    });
+
+    // Check if elements exist
+    if (!select) {
+        console.error('tableSelect element not found');
+        return;
+    }
+    if (!customSelect) {
+        console.error('customTableSelect element not found');
+        return;
+    }
+    if (!geoSelect) {
+        console.error('geoTableSelect element not found');
+        return;
+    }
+
+    // Check if we have table data
+    if (!dashboardData || !dashboardData.tables || !Array.isArray(dashboardData.tables)) {
+        console.error('No table data available to populate dropdowns');
+        console.log('dashboardData:', dashboardData);
+        console.log('Will try fallback method...');
+        return await populateTableSelectFallback();
+    }
+
+    // Check if tables array is empty
+    if (dashboardData.tables.length === 0) {
+        console.warn('Tables array is empty, trying fallback...');
+        return await populateTableSelectFallback();
+    }
+
+    console.log('Clearing dropdowns...');
+    // Clear all selects
+    select.innerHTML = '<option value="">-- Select a table --</option>';
+    customSelect.innerHTML = '<option value="">-- Select a table --</option>';
+    geoSelect.innerHTML = '<option value="">-- Select a table --</option>';
+
+    console.log('Adding tables to dropdowns:', dashboardData.tables.map(t => t.name));
+
+    dashboardData.tables.forEach((table, index) => {
+        console.log(`Adding table ${index + 1}: ${table.name}`);
+
+        // Analysis table select
+        const option1 = document.createElement('option');
+        option1.value = table.name;
+        option1.textContent = table.name;
+        select.appendChild(option1);
+
+        // Custom chart table select
+        const option2 = document.createElement('option');
+        option2.value = table.name;
+        option2.textContent = table.name;
+        customSelect.appendChild(option2);
+
+        // Geographic table select
+        const option3 = document.createElement('option');
+        option3.value = table.name;
+        option3.textContent = table.name;
+        geoSelect.appendChild(option3);
+    });
+
+    console.log(`Successfully added ${dashboardData.tables.length} tables to all dropdowns`);
+
+    // Verify the options were added
+    console.log('Verification - tableSelect options after population:', Array.from(select.options).map(opt => ({
+        value: opt.value,
+        text: opt.textContent
+    })));
+
+    // Add event listeners
+    select.addEventListener('change', function() {
+        console.log('Table analysis dropdown changed to:', this.value);
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        if (analyzeBtn) {
+            analyzeBtn.disabled = !this.value;
+        }
+    });
+
+    customSelect.addEventListener('change', function() {
+        console.log('Custom table dropdown changed to:', this.value);
+    });
+
+    geoSelect.addEventListener('change', function() {
+        console.log('Geographic table dropdown changed to:', this.value);
+        const geoBtn = document.getElementById('createGeoChartBtn');
+        if (geoBtn) {
+            geoBtn.disabled = !this.value;
+        }
+    });
+
+    console.log('=== POPULATE TABLE SELECT END ===');
+}
+
+// Fallback function to get tables directly from API
+async function populateTableSelectFallback() {
+    console.log('Using fallback method to populate table selects...');
+    
+    try {
+        const response = await fetch('/api/tables');
+        const result = await response.json();
+        
+        if (result.success && result.tables && Array.isArray(result.tables)) {
+            console.log('Got tables from fallback API:', result.tables);
+            
+            const select = document.getElementById('tableSelect');
+            const customSelect = document.getElementById('customTableSelect');
+            const geoSelect = document.getElementById('geoTableSelect');
+            
+            if (select && customSelect && geoSelect) {
+                // Clear all selects
+                select.innerHTML = '<option value="">-- Select a table --</option>';
+                customSelect.innerHTML = '<option value="">-- Select a table --</option>';
+                geoSelect.innerHTML = '<option value="">-- Select a table --</option>';
+                
+                result.tables.forEach(tableName => {
+                    // Analysis table select
+                    const option1 = document.createElement('option');
+                    option1.value = tableName;
+                    option1.textContent = tableName;
+                    select.appendChild(option1);
+                    
+                    // Custom chart table select
+                    const option2 = document.createElement('option');
+                    option2.value = tableName;
+                    option2.textContent = tableName;
+                    customSelect.appendChild(option2);
+                    
+                    // Geographic table select
+                    const option3 = document.createElement('option');
+                    option3.value = tableName;
+                    option3.textContent = tableName;
+                    geoSelect.appendChild(option3);
+                });
+                
+                console.log(`Fallback: Successfully added ${result.tables.length} tables to dropdowns`);
+                
+                // Add event listeners
+                select.addEventListener('change', function() {
+                    const analyzeBtn = document.getElementById('analyzeBtn');
+                    if (analyzeBtn) {
+                        analyzeBtn.disabled = !this.value;
+                    }
+                });
+                
+                customSelect.addEventListener('change', function() {
+                    console.log('Custom table dropdown changed to:', this.value);
+                });
+                
+                geoSelect.addEventListener('change', function() {
+                    console.log('Geographic table dropdown changed to:', this.value);
+                    const geoBtn = document.getElementById('createGeoChartBtn');
+                    if (geoBtn) {
+                        geoBtn.disabled = !this.value;
+                    }
+                });
+            }
+        } else {
+            console.error('Fallback API did not return valid table data:', result);
+        }
+    } catch (error) {
+        console.error('Fallback table population failed:', error);
+    }
+}
+
+async function analyzeTable() {
+    const tableName = document.getElementById('tableSelect').value;
+    if (!tableName) return;
+    
+    try {
+        const response = await fetch(`/api/visualizations/table/${tableName}/analysis`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayTableAnalysis(result.data);
+        } else {
+            showError('Failed to analyze table: ' + result.error);
+        }
+    } catch (error) {
+        showError('Error analyzing table: ' + error.message);
+    }
+}
+
+function displayTableAnalysis(columnData) {
+    const resultsDiv = document.getElementById('tableAnalysisResults');
+    const tableBody = document.querySelector('#columnStatsTable tbody');
+    
+    // Clear existing data
+    tableBody.innerHTML = '';
+    
+    // Populate table with column statistics
+    columnData.forEach(column => {
+        const row = document.createElement('tr');
+        
+        let additionalStats = '';
+        if (column.stats.min_value !== undefined) {
+            additionalStats = `Min: ${column.stats.min_value}, Max: ${column.stats.max_value}, Avg: ${column.stats.avg_value?.toFixed(2)}`;
+        } else if (column.stats.avg_length !== undefined) {
+            additionalStats = `Avg Length: ${column.stats.avg_length?.toFixed(1)}, Distinct: ${column.stats.distinct_count}`;
+        } else if (column.stats.distinct_count !== undefined) {
+            additionalStats = `Distinct: ${column.stats.distinct_count}`;
+        } else if (column.stats.error) {
+            additionalStats = `Error: ${column.stats.error}`;
+        }
+        
+        const nullPercentage = column.stats.total_count ? 
+            ((column.stats.null_count / column.stats.total_count) * 100).toFixed(1) : 'N/A';
+        
+        row.innerHTML = `
+            <td><strong>${column.name}</strong></td>
+            <td><span class="badge badge-info">${column.type}</span></td>
+            <td>${column.stats.total_count?.toLocaleString() || 'N/A'}</td>
+            <td>${column.stats.non_null_count?.toLocaleString() || 'N/A'}</td>
+            <td>${nullPercentage}%</td>
+            <td><small>${additionalStats}</small></td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+    
+    // Create data quality chart
+    createDataQualityChart(columnData);
+    
+    resultsDiv.style.display = 'block';
+}
+
+function createDataQualityChart(columnData) {
+    const canvas = document.getElementById('dataQualityChart');
+    if (!canvas) {
+        console.warn('dataQualityChart canvas element not found');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+    
+    // Calculate overall data quality metrics
+    const totalColumns = columnData.length;
+    const columnsWithNulls = columnData.filter(col => col.stats.null_count > 0).length;
+    const columnsWithoutNulls = totalColumns - columnsWithNulls;
+    
+    // Properly destroy existing chart
+    dataQualityChart = destroyChart(dataQualityChart);
+    
+    dataQualityChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Columns with Nulls', 'Columns without Nulls'],
+            datasets: [{
+                data: [columnsWithNulls, columnsWithoutNulls],
+                backgroundColor: ['#e74a3b', '#1cc88a'],
+                borderColor: '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function switchChart(chartId, newType) {
+    if (chartId === 'tableRowsChart' && tableRowsChart) {
+        const canvas = document.getElementById('tableRowsChart');
+        if (!canvas) {
+            console.warn('Cannot switch chart: canvas element not found');
+            return;
+        }
+        
+        const config = tableRowsChart.config;
+        config.type = newType;
+        tableRowsChart = destroyChart(tableRowsChart);
+        tableRowsChart = new Chart(canvas.getContext('2d'), config);
+    }
+}
+
+async function refreshAllCharts() {
+    // Safely show loading indicator and hide content
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const dashboardContent = document.getElementById('dashboardContent');
+    
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'block';
+    }
+    if (dashboardContent) {
+        dashboardContent.style.display = 'none';
+    }
+    
+    // Properly destroy all existing charts
+    tableRowsChart = destroyChart(tableRowsChart);
+    dataTypesChart = destroyChart(dataTypesChart);
+    tableSizesChart = destroyChart(tableSizesChart);
+    columnCountChart = destroyChart(columnCountChart);
+    dataQualityChart = destroyChart(dataQualityChart);
+    customChart = destroyChart(customChart);
+    geoChart = destroyChart(geoChart);
+    geoDistributionChart = destroyChart(geoDistributionChart);
+    
+    // Hide custom chart containers safely
+    const customContainer = document.getElementById('customChartContainer');
+    const geoContainer = document.getElementById('geoVisualizationContainer');
+    
+    if (customContainer) {
+        customContainer.style.display = 'none';
+    }
+    if (geoContainer) {
+        geoContainer.style.display = 'none';
+    }
+    
+    await loadDashboardData();
+}
+
+// Manual function to test table population (for debugging)
+async function debugTablePopulation() {
+    console.log('=== DEBUG: Manual Table Population Test ===');
+    
+    // Test 1: Check current dashboard data
+    console.log('Current dashboardData:', dashboardData);
+    
+    // Test 2: Try direct API call to /api/tables
+    console.log('Testing direct API call to /api/tables...');
+    try {
+        const response = await fetch('/api/tables');
+        console.log('API response status:', response.status);
+        console.log('API response headers:', response.headers);
+        
+        const result = await response.json();
+        console.log('API response data:', result);
+        
+        if (result.success && result.tables) {
+            console.log('Direct API call successful, tables found:', result.tables);
+            
+            // Manually populate dropdowns
+            const select = document.getElementById('tableSelect');
+            const customSelect = document.getElementById('customTableSelect');
+            const geoSelect = document.getElementById('geoTableSelect');
+            
+            console.log('Dropdown elements found:', {
+                tableSelect: !!select,
+                customTableSelect: !!customSelect,
+                geoTableSelect: !!geoSelect
+            });
+            
+            if (select && customSelect && geoSelect) {
+                // Clear and populate
+                select.innerHTML = '<option value="">-- Select a table --</option>';
+                customSelect.innerHTML = '<option value="">-- Select a table --</option>';
+                geoSelect.innerHTML = '<option value="">-- Select a table --</option>';
+                
+                console.log('Cleared dropdowns, adding tables...');
+                
+                result.tables.forEach((tableName, index) => {
+                    console.log(`Adding table ${index + 1}: ${tableName}`);
+                    
+                    const option1 = document.createElement('option');
+                    option1.value = tableName;
+                    option1.textContent = tableName;
+                    select.appendChild(option1);
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = tableName;
+                    option2.textContent = tableName;
+                    customSelect.appendChild(option2);
+                    
+                    const option3 = document.createElement('option');
+                    option3.value = tableName;
+                    option3.textContent = tableName;
+                    geoSelect.appendChild(option3);
+                });
+                
+                console.log('Manual population completed');
+                
+                // Verify the options were added
+                console.log('Verification - tableSelect options:', Array.from(select.options).map(opt => ({
+                    value: opt.value,
+                    text: opt.textContent
+                })));
+                
+            } else {
+                console.error('Dropdown elements not found:', {
+                    tableSelect: !!select,
+                    customSelect: !!customSelect,
+                    geoSelect: !!geoSelect
+                });
+            }
+        } else {
+            console.error('API call failed or returned no tables:', result);
+        }
+    } catch (error) {
+        console.error('Direct API call failed:', error);
+    }
+    
+    // Test 3: Check dropdown contents after population
+    const select = document.getElementById('tableSelect');
+    if (select) {
+        console.log('Final options in tableSelect:', Array.from(select.options).map(opt => ({
+            value: opt.value,
+            text: opt.textContent
+        })));
+    }
+    
+    console.log('=== END DEBUG ===');
+}
+
+// Test database connection function
+async function testDatabaseConnection() {
+    console.log('=== TESTING DATABASE CONNECTION ===');
+    
+    try {
+        const response = await fetch('/api/connection/status');
+        const result = await response.json();
+        
+        console.log('Connection status response:', result);
+        
+        if (result.success) {
+            alert('✅ Database connection is working!\n\nMessage: ' + result.message);
+        } else {
+            alert('❌ Database connection failed!\n\nError: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Connection test failed:', error);
+        alert('❌ Connection test failed: ' + error.message);
+    }
+}
+
+// Debug connection function
+async function debugConnection() {
+    console.log('=== DEBUGGING CONNECTION ===');
+    
+    try {
+        const response = await fetch('/api/debug/connection');
+        const result = await response.json();
+        
+        console.log('Debug connection response:', result);
+        
+        let message = '🔍 **Connection Debug Report:**\n\n';
+        message += `**Has Connection:** ${result.has_connection ? '✅ Yes' : '❌ No'}\n\n`;
+        message += `**Configuration:**\n`;
+        message += `- Host: ${result.config.host}\n`;
+        message += `- Port: ${result.config.port}\n`;
+        message += `- Database: ${result.config.database}\n`;
+        message += `- User: ${result.config.user}\n`;
+        message += `- Password: ${result.config.password}\n\n`;
+        
+        if (result.connection_test) {
+            message += `**Connection Test:** ${result.connection_test.success ? '✅ Success' : '❌ Failed'}\n`;
+            message += `Message: ${result.connection_test.message}\n\n`;
+        }
+        
+        if (result.tables_test) {
+            message += `**Tables Test:** ${result.tables_test.success ? '✅ Success' : '❌ Failed'}\n`;
+            if (result.tables_test.success) {
+                message += `Tables found: ${result.tables_test.tables.length}\n`;
+                message += `Table names: ${result.tables_test.tables.join(', ')}\n`;
+            } else {
+                message += `Error: ${result.tables_test.message}\n`;
+            }
+        }
+        
+        alert(message);
+        
+    } catch (error) {
+        console.error('Debug connection failed:', error);
+        alert('❌ Debug connection failed: ' + error.message);
+    }
+}
+
+// Simple test to check if dropdown elements exist
+function testDropdownElements() {
+    console.log('=== TESTING DROPDOWN ELEMENTS ===');
+    
+    const elements = {
+        'tableSelect': document.getElementById('tableSelect'),
+        'customTableSelect': document.getElementById('customTableSelect'),
+        'geoTableSelect': document.getElementById('geoTableSelect')
+    };
+    
+    console.log('Dropdown elements check:', elements);
+    
+    Object.keys(elements).forEach(id => {
+        const element = elements[id];
+        if (element) {
+            console.log(`✅ ${id}: Found (tag: ${element.tagName}, type: ${element.type})`);
+            console.log(`   Current options: ${element.options.length}`);
+            console.log(`   Current value: ${element.value}`);
+        } else {
+            console.log(`❌ ${id}: Not found`);
+        }
+    });
+    
+    return elements;
+}
+
+// Make debug functions available globally for console testing
+window.debugTablePopulation = debugTablePopulation;
+window.testDatabaseConnection = testDatabaseConnection;
+window.debugConnection = debugConnection;
+window.testDropdownElements = testDropdownElements;
+
+// Test geographic API function
+async function testGeoAPI(tableName) {
+    console.log('Testing Geo API for table:', tableName);
+    try {
+        const response = await fetch(`/api/visualizations/geo/${tableName}`);
+        const result = await response.json();
+        console.log('Geo API Result:', result);
+        console.log('Location columns count:', result.location_columns?.length || 0);
+        console.log('Value columns count:', result.value_columns?.length || 0);
+        return result;
+    } catch (error) {
+        console.error('Geo API Error:', error);
+        return null;
+    }
+}
+
+window.testGeoAPI = testGeoAPI;
+
+// Test complete geographic chart creation
+async function testGeoChartCreation() {
+    console.log('Testing complete geographic chart creation...');
+    
+    // Test with user_vision table
+    const tableName = 'user_vision';
+    const locationColumn = 'state';
+    const valueColumn = ''; // Empty for count aggregation
+    const aggregation = 'count';
+    
+    console.log('Test parameters:', { tableName, locationColumn, valueColumn, aggregation });
+    
+    try {
+        const response = await fetch('/api/visualizations/geographic/data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                table_name: tableName,
+                location_column: locationColumn,
+                value_column: valueColumn,
+                aggregation: aggregation
+            })
+        });
+        
+        const result = await response.json();
+        console.log('Test API response:', result);
+        
+        if (result.success) {
+            console.log('Test successful! Geo data:', result.geo_data);
+            return result;
+        } else {
+            console.error('Test failed:', result.error);
+            return null;
+        }
+    } catch (error) {
+        console.error('Test error:', error);
+        return null;
+    }
+}
+
+window.testGeoChartCreation = testGeoChartCreation;
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Custom Chart Builder Functions
+async function loadTableColumns() {
+    console.log('loadTableColumns called');
+    const tableName = document.getElementById('customTableSelect').value;
+    const xColumnSelect = document.getElementById('customXColumn');
+    const yColumnSelect = document.getElementById('customYColumn');
+    const createBtn = document.getElementById('createCustomChartBtn');
+    
+    console.log('Elements found:', {
+        tableName,
+        xColumnSelect: !!xColumnSelect,
+        yColumnSelect: !!yColumnSelect,
+        createBtn: !!createBtn
+    });
+    
+    // Clear column selects
+    xColumnSelect.innerHTML = '<option value="">-- Select X column --</option>';
+    yColumnSelect.innerHTML = '<option value="">-- Select Y column --</option>';
+    createBtn.disabled = true;
+    
+    if (!tableName) {
+        console.log('No table selected, returning');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/visualizations/custom/columns/${tableName}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log('Columns received:', result.columns);
+            result.columns.forEach(column => {
+                console.log('Adding column:', column.name, 'Type:', column.type, 'Category:', column.category);
+                
+                // X Column (all types)
+                const xOption = document.createElement('option');
+                xOption.value = column.name;
+                xOption.textContent = `${column.name} (${column.type})`;
+                xOption.dataset.category = column.category;
+                xColumnSelect.appendChild(xOption);
+                
+                // Y Column (numeric preferred)
+                const yOption = document.createElement('option');
+                yOption.value = column.name;
+                yOption.textContent = `${column.name} (${column.type})`;
+                yOption.dataset.category = column.category;
+                if (column.category === 'numeric') {
+                    yOption.style.fontWeight = 'bold';
+                }
+                yColumnSelect.appendChild(yOption);
+            });
+            
+            console.log('X Column options count:', xColumnSelect.options.length);
+            console.log('Y Column options count:', yColumnSelect.options.length);
+            
+            // Enable create button when X column is selected
+            xColumnSelect.addEventListener('change', function() {
+                createBtn.disabled = !this.value;
+                console.log('X Column changed to:', this.value);
+            });
+        } else {
+            showError('Failed to load table columns: ' + result.error);
+        }
+    } catch (error) {
+        showError('Error loading table columns: ' + error.message);
+    }
+}
+
+async function createCustomChart() {
+    const tableName = document.getElementById('customTableSelect').value;
+    const xColumn = document.getElementById('customXColumn').value;
+    const yColumn = document.getElementById('customYColumn').value;
+    const chartType = document.getElementById('customChartType').value;
+    const aggregation = document.getElementById('customAggregation').value;
+    
+    console.log('createCustomChart called with:', {
+        tableName,
+        xColumn,
+        yColumn,
+        chartType,
+        aggregation
+    });
+    
+    if (!tableName || !xColumn) {
+        alert('Please select a table and X column');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/visualizations/custom/data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                table_name: tableName,
+                x_column: xColumn,
+                y_column: yColumn,
+                chart_type: chartType,
+                aggregation: aggregation,
+                limit: 50
+            })
+        });
+        
+        const result = await response.json();
+        console.log('API response:', result);
+        
+        if (result.success) {
+            console.log('Chart data received:', result.chart_data);
+            displayCustomChart(result.chart_data, chartType, tableName, xColumn, yColumn, aggregation);
+        } else {
+            console.error('API error:', result.error);
+            showError('Failed to create custom chart: ' + result.error);
+        }
+    } catch (error) {
+        showError('Error creating custom chart: ' + error.message);
+    }
+}
+
+function displayCustomChart(chartData, chartType, tableName, xColumn, yColumn, aggregation) {
+    console.log('displayCustomChart called with:', {
+        chartData,
+        chartType,
+        tableName,
+        xColumn,
+        yColumn,
+        aggregation
+    });
+    
+    const canvas = document.getElementById('customChart');
+    const container = document.getElementById('customChartContainer');
+    const title = document.getElementById('customChartTitle');
+    
+    if (!canvas || !container || !title) {
+        console.error('Required elements for custom chart not found:', {
+            canvas: !!canvas,
+            container: !!container,
+            title: !!title
+        });
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart
+    customChart = destroyChart(customChart);
+    
+    // Set title
+    const yLabel = yColumn ? `${aggregation} of ${yColumn}` : `${aggregation} of ${xColumn}`;
+    title.textContent = `${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart: ${yLabel} by ${xColumn}`;
+    
+    // Configure chart options based on type
+    let chartConfig = {
+        type: chartType,
+        data: {
+            labels: chartData.labels,
+            datasets: [{
+                label: chartData.datasets[0].label,
+                data: chartData.datasets[0].data,
+                backgroundColor: chartType === 'pie' || chartType === 'doughnut' ? 
+                    colorSchemes.primary : colorSchemes.secondary[0],
+                borderColor: chartType === 'pie' || chartType === 'doughnut' ? 
+                    '#ffffff' : colorSchemes.primary[0],
+                borderWidth: chartType === 'pie' || chartType === 'doughnut' ? 2 : 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: chartType === 'pie' || chartType === 'doughnut',
+                    position: 'bottom'
+                }
+            }
+        }
+    };
+    
+    // Add scales for non-pie charts
+    if (chartType !== 'pie' && chartType !== 'doughnut') {
+        chartConfig.options.scales = {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: yLabel
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: xColumn
+                },
+                ticks: {
+                    maxRotation: 45,
+                    minRotation: 45
+                }
+            }
+        };
+    }
+    
+    customChart = new Chart(ctx, chartConfig);
+    container.style.display = 'block';
+}
+
+// Geographic Mapping Functions
+async function loadGeoColumns() {
+    console.log('loadGeoColumns called');
+    const tableName = document.getElementById('geoTableSelect').value;
+    const locationSelect = document.getElementById('geoLocationColumn');
+    const valueSelect = document.getElementById('geoValueColumn');
+    const createBtn = document.getElementById('createGeoBtn');
+    
+    console.log('Geo elements found:', {
+        tableName,
+        locationSelect: !!locationSelect,
+        valueSelect: !!valueSelect,
+        createBtn: !!createBtn
+    });
+    
+    // Clear column selects
+    locationSelect.innerHTML = '<option value="">-- Select location column --</option>';
+    valueSelect.innerHTML = '<option value="">-- Select value column --</option>';
+    createBtn.disabled = true;
+    
+    if (!tableName) {
+        console.log('No table selected for geo columns, returning');
+        return;
+    }
+    
+    try {
+        console.log('Fetching geo columns for table:', tableName);
+        const response = await fetch(`/api/visualizations/geo/${tableName}`);
+        const result = await response.json();
+        
+        console.log('Geo API response:', result);
+        console.log('Location columns:', result.location_columns);
+        console.log('Value columns:', result.value_columns);
+        
+        if (result.success) {
+            // Populate location columns
+            if (result.location_columns && result.location_columns.length > 0) {
+                console.log('Location columns received:', result.location_columns);
+                result.location_columns.forEach(column => {
+                    console.log('Adding location column:', column.name, 'Type:', column.type);
+                    const locOption = document.createElement('option');
+                    locOption.value = column.name;
+                    locOption.textContent = `${column.name} (${column.type})`;
+                    locOption.style.fontWeight = 'bold';
+                    locationSelect.appendChild(locOption);
+                });
+            } else {
+                console.warn('No location columns found');
+            }
+            
+            // Populate value columns
+            if (result.value_columns && result.value_columns.length > 0) {
+                console.log('Value columns received:', result.value_columns);
+                result.value_columns.forEach(column => {
+                    console.log('Adding value column:', column.name, 'Type:', column.type);
+                    const valOption = document.createElement('option');
+                    valOption.value = column.name;
+                    valOption.textContent = `${column.name} (${column.type})`;
+                    valOption.style.fontWeight = 'bold';
+                    valueSelect.appendChild(valOption);
+                });
+            } else {
+                console.warn('No value columns found - adding count option');
+                // Add a special option for count aggregation when no numeric columns exist
+                const countOption = document.createElement('option');
+                countOption.value = '';
+                countOption.textContent = 'Count (no value column needed)';
+                countOption.style.fontStyle = 'italic';
+                countOption.style.color = '#6c757d';
+                valueSelect.appendChild(countOption);
+            }
+            
+            console.log('Location options count:', locationSelect.options.length);
+            console.log('Value options count:', valueSelect.options.length);
+            
+            // Enable create button when location column is selected
+            locationSelect.addEventListener('change', function() {
+                createBtn.disabled = !this.value;
+                console.log('Location column changed to:', this.value);
+            });
+            
+            // Also enable create button when value column is selected
+            valueSelect.addEventListener('change', function() {
+                console.log('Value column changed to:', this.value);
+                // Create button should be enabled if location column is selected
+                // Value column is optional for count aggregation
+                if (locationSelect.value) {
+                    createBtn.disabled = false;
+                }
+            });
+        } else {
+            console.error('Geo API error:', result.error);
+            showError('Failed to load table columns: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error loading geo columns:', error);
+        showError('Error loading table columns: ' + error.message);
+    }
+}
+
+// This function is deprecated - use createGeoChart() instead
+async function createGeoVisualization() {
+    console.warn('createGeoVisualization is deprecated, use createGeoChart instead');
+    return createGeoChart();
+}
+
+function displayGeoVisualization(geoData, tableName, locationColumn, valueColumn, aggregation) {
+    console.log('displayGeoVisualization called with:', {
+        geoData,
+        tableName,
+        locationColumn,
+        valueColumn,
+        aggregation
+    });
+    
+    const geoCanvas = document.getElementById('geoChart');
+    const distributionCanvas = document.getElementById('geoDistributionChart');
+    const container = document.getElementById('geoVisualizationContainer');
+    const title = document.getElementById('geoChartTitle');
+    
+    if (!geoCanvas || !distributionCanvas || !container || !title) {
+        console.error('Required elements for geographic visualization not found:', {
+            geoCanvas: !!geoCanvas,
+            distributionCanvas: !!distributionCanvas,
+            container: !!container,
+            title: !!title
+        });
+        return;
+    }
+    
+    const ctx = geoCanvas.getContext('2d');
+    const distributionCtx = distributionCanvas.getContext('2d');
+    
+    // Validate geoData
+    if (!geoData || !Array.isArray(geoData) || geoData.length === 0) {
+        console.error('Invalid or empty geoData:', geoData);
+        showError('No geographic data available for visualization');
+        return;
+    }
+    
+    console.log('Processing geoData with', geoData.length, 'locations');
+    
+    // Destroy existing charts
+    geoChart = destroyChart(geoChart);
+    geoDistributionChart = destroyChart(geoDistributionChart);
+    
+    // Sort data by value for better visualization
+    geoData.sort((a, b) => b.value - a.value);
+    
+    // Take top 20 locations for readability
+    const topLocations = geoData.slice(0, 20);
+    
+    // Set title
+    const valueLabel = valueColumn ? `${aggregation} of ${valueColumn}` : `${aggregation}`;
+    title.textContent = `Geographic Distribution: ${valueLabel} by ${locationColumn}`;
+    
+    // Main geographic chart (horizontal bar for better readability)
+    const mainChartConfig = {
+        type: 'bar',
+        data: {
+            labels: topLocations.map(item => item.display_name),
+            datasets: [{
+                label: valueLabel,
+                data: topLocations.map(item => item.value),
+                backgroundColor: colorSchemes.secondary.slice(3, 4),
+                borderColor: colorSchemes.primary.slice(3, 4),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: valueLabel
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: locationColumn
+                    }
+                }
+            }
+        }
+    };
+    
+    // Distribution chart (pie chart showing top vs others)
+    const topCount = Math.min(5, topLocations.length);
+    const topSum = topLocations.slice(0, topCount).reduce((sum, item) => sum + item.value, 0);
+    const othersSum = geoData.slice(topCount).reduce((sum, item) => sum + item.value, 0);
+    
+    const distributionConfig = {
+        type: 'doughnut',
+        data: {
+            labels: ['Top ' + topCount, 'Others'],
+            datasets: [{
+                data: [topSum, othersSum],
+                backgroundColor: ['#1cc88a', '#e74a3b'],
+                borderColor: '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    };
+    
+    geoChart = new Chart(ctx, mainChartConfig);
+    geoDistributionChart = new Chart(distributionCtx, distributionConfig);
+    
+    // Update statistics safely
+    const updateGeoStat = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        }
+    };
+    
+    updateGeoStat('totalLocations', geoData.length.toLocaleString());
+    updateGeoStat('topLocation', geoData[0]?.display_name || 'N/A');
+    updateGeoStat('totalValue', geoData.reduce((sum, item) => sum + item.value, 0).toLocaleString());
+    
+    container.style.display = 'block';
+    
+    // Create map visualization
+    createMapVisualization(geoData, locationColumn, valueColumn, aggregation);
+}
+
+function createMapVisualization(geoData, locationColumn, valueColumn, aggregation) {
+    console.log('Creating map visualization with data:', geoData);
+    
+    // Destroy existing map
+    if (geoMap) {
+        geoMap.remove();
+        geoMap = null;
+    }
+    
+    const mapContainer = document.getElementById('geoMap');
+    if (!mapContainer) {
+        console.error('Map container not found');
+        return;
+    }
+    
+    // Initialize map centered on India
+    geoMap = L.map('geoMap').setView([20.5937, 78.9629], 5);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(geoMap);
+    
+    // State coordinates mapping (simplified for major Indian states)
+    const stateCoordinates = {
+        'Tamil Nadu': [11.1271, 78.6569],
+        'Uttar Pradesh': [26.8467, 80.9462],
+        'Telangana': [18.1124, 79.0193],
+        'Delhi': [28.7041, 77.1025],
+        'Haryana': [29.0588, 76.0856],
+        'Gujarat': [23.0225, 72.5714],
+        'Odisha': [20.9517, 85.0985],
+        'Kerala': [10.8505, 76.2711],
+        'Maharashtra': [19.7515, 75.7139],
+        'Karnataka': [15.3173, 75.7139],
+        'Rajasthan': [27.0238, 74.2179],
+        'West Bengal': [22.9868, 87.8550],
+        'Madhya Pradesh': [22.9734, 78.6569],
+        'Andhra Pradesh': [15.9129, 79.7400],
+        'Bihar': [25.0961, 85.3131],
+        'Punjab': [31.1471, 75.3412],
+        'Assam': [26.2006, 92.9376],
+        'Jharkhand': [23.6102, 85.2799],
+        'Chhattisgarh': [21.2787, 81.8661],
+        'Himachal Pradesh': [31.1048, 77.1734],
+        'Uttarakhand': [30.0668, 79.0193],
+        'Jammu and Kashmir': [34.0837, 74.7973],
+        'Goa': [15.2993, 74.1240],
+        'Manipur': [24.6637, 93.9063],
+        'Meghalaya': [25.4670, 91.3662],
+        'Mizoram': [23.1645, 92.9376],
+        'Nagaland': [26.1584, 94.5624],
+        'Sikkim': [27.5330, 88.5122],
+        'Tripura': [23.9408, 91.9882],
+        'Arunachal Pradesh': [28.2180, 94.7278]
+    };
+    
+    // Create markers for each location
+    const markers = [];
+    const maxValue = Math.max(...geoData.map(item => item.value));
+    const minValue = Math.min(...geoData.map(item => item.value));
+    
+    // Calculate dynamic percentiles based on actual data distribution
+    const values = geoData.map(item => item.value).sort((a, b) => a - b);
+    const percentiles = {
+        p10: values[Math.floor(values.length * 0.1)],
+        p30: values[Math.floor(values.length * 0.3)],
+        p60: values[Math.floor(values.length * 0.6)],
+        p85: values[Math.floor(values.length * 0.85)]
+    };
+    
+    console.log('Dynamic percentiles calculated:', percentiles);
+    console.log('Data distribution:', {
+        min: minValue,
+        max: maxValue,
+        count: geoData.length,
+        percentiles: percentiles
+    });
+    
+    geoData.forEach((item, index) => {
+        const stateName = item.display_name || item.location;
+        const coordinates = stateCoordinates[stateName];
+        
+        if (coordinates) {
+            // Calculate marker size based on value (normalized)
+            const normalizedValue = item.value / maxValue;
+            const markerSize = Math.max(10, normalizedValue * 30);
+            
+            // Get color based on dynamic percentiles
+            const color = getDynamicColorForValue(item.value, percentiles);
+            
+            // Create custom marker
+            const marker = L.circleMarker(coordinates, {
+                radius: markerSize,
+                fillColor: color,
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            });
+            
+            // Add popup with information
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <h6 style="margin: 0 0 8px 0; color: #333;">${stateName}</h6>
+                    <p style="margin: 4px 0; font-size: 14px;">
+                        <strong>${valueColumn ? `${aggregation} of ${valueColumn}` : 'Count'}:</strong> ${item.value.toLocaleString()}
+                    </p>
+                    <p style="margin: 4px 0; font-size: 12px; color: #666;">
+                        Rank: #${index + 1} of ${geoData.length}
+                    </p>
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            marker.addTo(geoMap);
+            markers.push(marker);
+        } else {
+            console.warn(`Coordinates not found for state: ${stateName}`);
+        }
+    });
+    
+    // Fit map to show all markers
+    if (markers.length > 0) {
+        const group = new L.featureGroup(markers);
+        geoMap.fitBounds(group.getBounds().pad(0.1));
+    }
+    
+    // Add legend with dynamic percentiles
+    addDynamicMapLegend(percentiles, valueColumn, aggregation);
+}
+
+function getDynamicColorForValue(value, percentiles) {
+    // Dynamic color scale based on actual data percentiles
+    if (value <= percentiles.p10) return '#2E8B57'; // Sea Green - Bottom 10%
+    if (value <= percentiles.p30) return '#32CD32'; // Lime Green - 10-30%
+    if (value <= percentiles.p60) return '#FFD700'; // Gold - 30-60%
+    if (value <= percentiles.p85) return '#FF8C00'; // Dark Orange - 60-85%
+    return '#FF4500'; // Orange Red - Top 15%
+}
+
+function getColorForValue(normalizedValue) {
+    // Fallback function for backward compatibility
+    if (normalizedValue < 0.1) return '#2E8B57';
+    if (normalizedValue < 0.3) return '#32CD32';
+    if (normalizedValue < 0.6) return '#FFD700';
+    if (normalizedValue < 0.85) return '#FF8C00';
+    return '#FF4500';
+}
+
+function addMapLegend(maxValue, valueColumn, aggregation) {
+    const legend = L.control({position: 'bottomright'});
+    
+    legend.onAdd = function (map) {
+        const div = L.DomUtil.create('div', 'info legend');
+        const valueLabel = valueColumn ? `${aggregation} of ${valueColumn}` : 'Count';
+        
+        div.innerHTML = `
+            <div style="background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                <h6 style="margin: 0 0 8px 0; font-size: 14px;">${valueLabel}</h6>
+                <div style="font-size: 12px;">
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #2E8B57; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>Low (0 - ${Math.round(maxValue * 0.2).toLocaleString()})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #32CD32; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>Medium (${Math.round(maxValue * 0.2).toLocaleString()} - ${Math.round(maxValue * 0.4).toLocaleString()})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #FFD700; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>High (${Math.round(maxValue * 0.4).toLocaleString()} - ${Math.round(maxValue * 0.6).toLocaleString()})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #FF8C00; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>Very High (${Math.round(maxValue * 0.6).toLocaleString()} - ${Math.round(maxValue * 0.8).toLocaleString()})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #FF4500; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>Highest (${Math.round(maxValue * 0.8).toLocaleString()}+)</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return div;
+    };
+    
+    legend.addTo(geoMap);
+}
+
+function addDynamicMapLegend(percentiles, valueColumn, aggregation) {
+    const legend = L.control({position: 'bottomright'});
+    
+    legend.onAdd = function (map) {
+        const div = L.DomUtil.create('div', 'info legend');
+        const valueLabel = valueColumn ? `${aggregation} of ${valueColumn}` : 'Count';
+        
+        // Format numbers with proper locale formatting
+        const formatNumber = (num) => num.toLocaleString();
+        
+        div.innerHTML = `
+            <div style="background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                <h6 style="margin: 0 0 8px 0; font-size: 14px;">${valueLabel} (Dynamic)</h6>
+                <div style="font-size: 12px;">
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #2E8B57; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>Low (≤ ${formatNumber(percentiles.p10)})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #32CD32; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>Medium-Low (${formatNumber(percentiles.p10 + 1)} - ${formatNumber(percentiles.p30)})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #FFD700; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>Medium (${formatNumber(percentiles.p30 + 1)} - ${formatNumber(percentiles.p60)})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #FF8C00; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>High (${formatNumber(percentiles.p60 + 1)} - ${formatNumber(percentiles.p85)})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin: 2px 0;">
+                        <div style="width: 12px; height: 12px; background: #FF4500; border-radius: 50%; margin-right: 8px;"></div>
+                        <span>Highest (${formatNumber(percentiles.p85 + 1)}+)</span>
+                    </div>
+                </div>
+                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 10px; color: #666;">
+                    <em>Ranges calculated from actual data distribution</em>
+                </div>
+            </div>
+        `;
+        
+        return div;
+    };
+    
+    legend.addTo(geoMap);
+}
+
+async function createGeoChart() {
+    console.log('createGeoChart called');
+    const tableName = document.getElementById('geoTableSelect').value;
+    const locationColumn = document.getElementById('geoLocationColumn').value;
+    const valueColumn = document.getElementById('geoValueColumn').value;
+    const aggregation = document.getElementById('geoAggregation').value;
+    
+    console.log('Geo chart parameters:', {
+        tableName,
+        locationColumn,
+        valueColumn,
+        aggregation
+    });
+    
+    if (!tableName || !locationColumn) {
+        alert('Please select a table and location column');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/visualizations/geographic/data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                table_name: tableName,
+                location_column: locationColumn,
+                value_column: valueColumn,
+                aggregation: aggregation,
+                filters: geoFilters
+            })
+        });
+        
+        const result = await response.json();
+        console.log('Geo chart API response:', result);
+        
+        if (result.success) {
+            console.log('Geo data received:', result.geo_data);
+            displayGeoVisualization(result.geo_data, tableName, locationColumn, valueColumn, aggregation);
+        } else {
+            console.error('Geo chart API error:', result.error);
+            showError('Failed to create geographic chart: ' + result.error);
+        }
+    } catch (error) {
+        showError('Error creating geographic chart: ' + error.message);
+    }
+}
+
+function downloadCustomChart() {
+    if (!customChart) return;
+    
+    const link = document.createElement('a');
+    link.download = 'custom-chart.png';
+    link.href = customChart.toBase64Image();
+    link.click();
+}
+
+// Geographic Filter Management
+let geoFilters = [];
+
+function toggleGeoFilters() {
+    const filterSection = document.getElementById('geoFilterSection');
+    const toggleBtn = document.getElementById('toggleGeoFiltersBtn');
+    
+    if (filterSection.style.display === 'none') {
+        filterSection.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-filter"></i> Hide Filters';
+        toggleBtn.classList.remove('btn-secondary');
+        toggleBtn.classList.add('btn-primary');
+    } else {
+        filterSection.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-filter"></i> Toggle Filters';
+        toggleBtn.classList.remove('btn-primary');
+        toggleBtn.classList.add('btn-secondary');
+    }
+}
+
+function addGeoFilter() {
+    const column = document.getElementById('geoFilterColumn').value;
+    const operator = document.getElementById('geoFilterOperator').value;
+    const value = document.getElementById('geoFilterValue').value;
+    
+    if (!column) {
+        alert('Please select a filter column');
+        return;
+    }
+    
+    if (!value && !['IS NULL', 'IS NOT NULL'].includes(operator)) {
+        alert('Please enter a filter value');
+        return;
+    }
+    
+    // Check if filter already exists
+    const existingFilter = geoFilters.find(f => f.column === column && f.operator === operator && f.value === value);
+    if (existingFilter) {
+        alert('This filter already exists');
+        return;
+    }
+    
+    const filter = {
+        id: Date.now(),
+        column: column,
+        operator: operator,
+        value: value
+    };
+    
+    geoFilters.push(filter);
+    updateActiveGeoFilters();
+    
+    // Clear the input fields
+    document.getElementById('geoFilterColumn').value = '';
+    document.getElementById('geoFilterValue').value = '';
+    
+    console.log('Added geo filter:', filter);
+    console.log('Current geo filters:', geoFilters);
+}
+
+function removeGeoFilter(filterId) {
+    geoFilters = geoFilters.filter(f => f.id !== filterId);
+    updateActiveGeoFilters();
+    console.log('Removed geo filter, remaining:', geoFilters);
+}
+
+function clearGeoFilters() {
+    geoFilters = [];
+    updateActiveGeoFilters();
+    console.log('Cleared all geo filters');
+}
+
+function updateActiveGeoFilters() {
+    const container = document.getElementById('activeGeoFilters');
+    
+    if (geoFilters.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0"><i class="fas fa-info-circle"></i> No active filters</p>';
+        return;
+    }
+    
+    let html = '<div class="d-flex flex-wrap gap-2">';
+    geoFilters.forEach(filter => {
+        const displayValue = ['IS NULL', 'IS NOT NULL'].includes(filter.operator) ? '' : `: ${filter.value}`;
+        const operatorText = filter.operator === 'LIKE' ? 'contains' : 
+                           filter.operator === 'NOT LIKE' ? 'does not contain' : 
+                           filter.operator;
+        
+        html += `
+            <span class="badge bg-info d-flex align-items-center">
+                <strong>${filter.column}</strong> ${operatorText} ${displayValue}
+                <button type="button" class="btn-close btn-close-white ms-2" 
+                        onclick="removeGeoFilter(${filter.id})" 
+                        style="font-size: 0.7em; padding: 0; width: 12px; height: 12px;">
+                </button>
+            </span>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function loadGeoColumns() {
+    const tableName = document.getElementById('geoTableSelect').value;
+    const locationSelect = document.getElementById('geoLocationColumn');
+    const valueSelect = document.getElementById('geoValueColumn');
+    const filterSelect = document.getElementById('geoFilterColumn');
+    const toggleBtn = document.getElementById('toggleGeoFiltersBtn');
+    const createBtn = document.getElementById('createGeoBtn');
+    
+    // Clear existing options
+    locationSelect.innerHTML = '<option value="">-- Select location column --</option>';
+    valueSelect.innerHTML = '<option value="">-- Select value column --</option>';
+    filterSelect.innerHTML = '<option value="">-- No Filter --</option>';
+    
+    // Enable/disable buttons
+    const hasTable = !!tableName;
+    toggleBtn.disabled = !hasTable;
+    createBtn.disabled = !hasTable;
+    
+    if (!tableName) {
+        console.log('No table selected for geo columns');
+        return;
+    }
+    
+    console.log('Loading geo columns for table:', tableName);
+    
+    fetch(`/api/visualizations/custom/columns/${tableName}`)
+        .then(response => response.json())
+        .then(result => {
+            console.log('Geo columns API response:', result);
+            
+            if (result.success && result.columns) {
+                result.columns.forEach(column => {
+                    // Location column option
+                    const locationOption = document.createElement('option');
+                    locationOption.value = column.name;
+                    locationOption.textContent = `${column.name} (${column.type})`;
+                    locationSelect.appendChild(locationOption);
+                    
+                    // Value column option (only for numeric types)
+                    if (['INTEGER', 'REAL', 'NUMERIC', 'DECIMAL', 'FLOAT', 'DOUBLE'].includes(column.type.toUpperCase())) {
+                        const valueOption = document.createElement('option');
+                        valueOption.value = column.name;
+                        valueOption.textContent = `${column.name} (${column.type})`;
+                        valueSelect.appendChild(valueOption);
+                    }
+                    
+                    // Filter column option (all columns)
+                    const filterOption = document.createElement('option');
+                    filterOption.value = column.name;
+                    filterOption.textContent = `${column.name} (${column.type})`;
+                    filterSelect.appendChild(filterOption);
+                });
+                
+                console.log(`Loaded ${result.columns.length} columns for geo visualization`);
+            } else {
+                console.error('Failed to load geo columns:', result.error);
+                showError('Failed to load table columns: ' + (result.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error loading geo columns:', error);
+            showError('Error loading table columns: ' + error.message);
+        });
+}
+
+function showError(message) {
+    console.log('showError called with:', message);
+    displayErrorSafely(message);
+}
+</script>
+{% endblock %}

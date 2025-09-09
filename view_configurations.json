@@ -1,0 +1,52 @@
+{
+  "54102ced-fcb4-4980-9852-5a8443961b7a_user_vision": {
+    "database_id": "54102ced-fcb4-4980-9852-5a8443961b7a",
+    "table_name": "user_vision",
+    "configuration": {
+      "list": {
+        "primary": "name",
+        "secondary": [
+          "email",
+          "gender",
+          "country",
+          "occupation"
+        ]
+      },
+      "detail": {
+        "partitions": [
+          {
+            "name": "General Information",
+            "fields": []
+          }
+        ]
+      }
+    },
+    "created_at": 1757331539.2848885,
+    "updated_at": 1757331539.284889
+  },
+  "fe00d315-a056-4be9-a70b-59869f97f4d0_c_vision_innovator": {
+    "database_id": "fe00d315-a056-4be9-a70b-59869f97f4d0",
+    "table_name": "c_vision_innovator",
+    "configuration": {
+      "list": {
+        "primary": "name",
+        "secondary": [
+          "email",
+          "gender",
+          "state",
+          "city"
+        ]
+      },
+      "detail": {
+        "partitions": [
+          {
+            "name": "General Information",
+            "fields": []
+          }
+        ]
+      }
+    },
+    "created_at": 1757398581.8836906,
+    "updated_at": 1757398581.8836906
+  }
+}

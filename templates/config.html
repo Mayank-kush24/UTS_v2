@@ -1,18 +1,89 @@
 {% extends "base.html" %}
 
-{% block title %}Configuration - PostgreSQL Data Viewer{% endblock %}
+{% block title %}Settings & Configuration - UTS 2.0{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
+<div class="container-fluid settings-container">
+    <div class="settings-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1>⚙️ Settings & Configuration</h1>
+                <p>Control all aspects of your Universal Tracking System with our enhanced settings interface</p>
+            </div>
+            <div class="d-flex gap-3 align-items-center">
+                <!-- Settings Status Indicator -->
+                <div class="status-card success d-none" id="settingsStatus">
+                    <div class="d-flex align-items-center">
+                        <div class="connection-indicator connected me-2"></div>
+                        <small class="text-success fw-semibold">Settings Saved</small>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveAllSettings()">
+                    <i class="fas fa-save me-2"></i>Save All Settings
+                </button>
+            </div>
+        </div>
+        
+        <!-- Progress Indicator -->
+        <div class="mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <small class="text-muted fw-semibold">Configuration Progress</small>
+                <small class="text-muted" id="progressText">0% Complete</small>
+            </div>
+            <div class="progress-indicator" id="configProgress" style="--progress: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Settings Navigation Tabs -->
+    <ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="database-tab" data-bs-toggle="tab" data-bs-target="#database" type="button" role="tab">
+                <i class="fas fa-database me-2"></i>Database
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="visualization-tab" data-bs-toggle="tab" data-bs-target="#visualization" type="button" role="tab">
+                <i class="fas fa-chart-bar me-2"></i>Visualization
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="user-tab" data-bs-toggle="tab" data-bs-target="#user" type="button" role="tab">
+                <i class="fas fa-user-cog me-2"></i>User Preferences
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="views-tab" data-bs-toggle="tab" data-bs-target="#views" type="button" role="tab">
+                <i class="fas fa-eye me-2"></i>Table Views
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button" role="tab">
+                <i class="fas fa-cogs me-2"></i>System
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab">
+                <i class="fas fa-shield-alt me-2"></i>Security
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="settingsTabContent">
+        
+        <!-- Database Settings -->
+        <div class="tab-pane fade show active" id="database" role="tabpanel" aria-labelledby="database-tab">
+            <div class="row">
+                <!-- Primary Database Connection -->
+                <div class="col-lg-8">
+                    <div class="card settings-card">
             <div class="card-header">
-                <h4 class="mb-0 fw-semibold">
-                    <i class="fas fa-sliders-h me-2"></i>Database Configuration
-                </h4>
+                            <h5 class="mb-0">
+                                <i class="fas fa-database me-2"></i>Primary Database Connection
+                            </h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ url_for('save_config') }}" id="configForm">
+                            <form id="databaseConfigForm">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -57,42 +128,601 @@
                                 <label for="password" class="form-label">
                                     <i class="fas fa-lock me-1"></i>Password
                                 </label>
+                                            <div class="input-group">
                                 <input type="password" class="form-control" id="password" name="password" 
                                        value="{{ config.password }}" required>
+                                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <button type="button" class="btn btn-outline-primary me-md-2 icon-hover" id="testBtn">
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-primary" onclick="testConnection()">
                             <i class="fas fa-vial me-1"></i>Test Connection
                         </button>
-                        <button type="submit" class="btn btn-success icon-hover">
+                                    <button type="button" class="btn btn-success" onclick="saveDatabaseConfig()">
                             <i class="fas fa-save me-1"></i>Save & Connect
                         </button>
                     </div>
                 </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Connection Status & Info -->
+                <div class="col-lg-4">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-wifi me-2 text-primary"></i>Connection Status
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Connection Status Card -->
+                            <div class="status-card" id="connectionStatusCard">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <div class="connection-indicator" id="connectionIndicator"></div>
+                                        <div>
+                                            <div class="fw-semibold" id="connectionText">Checking...</div>
+                                            <small class="text-muted" id="connectionSubtext">Initializing connection</small>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <small class="text-muted" id="lastUpdated">Just now</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Database Information -->
+                            <div class="mb-3">
+                                <h6 class="d-flex align-items-center">
+                                    <i class="fas fa-database me-2 text-info"></i>Database Information
+                                </h6>
+                                <div class="status-card" id="dbInfoCard">
+                                    <div id="dbInfo">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-search text-muted me-2"></i>
+                                            <small class="text-muted">Connect to see database details</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Quick Actions -->
+                            <div class="mb-3">
+                                <h6 class="d-flex align-items-center">
+                                    <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
+                                </h6>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-sm btn-outline-info" onclick="refreshConnection()">
+                                        <i class="fas fa-sync-alt me-1"></i>Refresh Status
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning" onclick="disconnectDatabase()">
+                                        <i class="fas fa-unlink me-1"></i>Disconnect
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Visualization Settings -->
+        <div class="tab-pane fade" id="visualization" role="tabpanel" aria-labelledby="visualization-tab">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-bar me-2 text-primary"></i>Chart Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="defaultChartType" class="form-label">Default Chart Type</label>
+                                <select class="form-select" id="defaultChartType">
+                                    <option value="bar">Bar Chart</option>
+                                    <option value="line">Line Chart</option>
+                                    <option value="pie">Pie Chart</option>
+                                    <option value="doughnut">Doughnut Chart</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="chartAnimation" class="form-label">Chart Animations</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="chartAnimation" checked>
+                                    <label class="form-check-label" for="chartAnimation">
+                                        Enable chart animations
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="chartColors" class="form-label">Color Scheme</label>
+                                <select class="form-select" id="chartColors">
+                                    <option value="default">Default</option>
+                                    <option value="vibrant">Vibrant</option>
+                                    <option value="pastel">Pastel</option>
+                                    <option value="monochrome">Monochrome</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="maxDataPoints" class="form-label">Max Data Points</label>
+                                <input type="number" class="form-control" id="maxDataPoints" value="100" min="10" max="1000">
+                                <div class="form-text">Maximum number of data points to display in charts</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-map-marked-alt me-2 text-success"></i>Map Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="mapProvider" class="form-label">Map Provider</label>
+                                <select class="form-select" id="mapProvider">
+                                    <option value="openstreetmap">OpenStreetMap</option>
+                                    <option value="cartodb">CartoDB</option>
+                                    <option value="esri">Esri</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="mapStyle" class="form-label">Map Style</label>
+                                <select class="form-select" id="mapStyle">
+                                    <option value="light">Light</option>
+                                    <option value="dark">Dark</option>
+                                    <option value="satellite">Satellite</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="markerSize" class="form-label">Default Marker Size</label>
+                                <input type="range" class="form-range" id="markerSize" min="5" max="50" value="20">
+                                <div class="d-flex justify-content-between">
+                                    <small>Small</small>
+                                    <small>Large</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="showMapLegend" checked>
+                                    <label class="form-check-label" for="showMapLegend">
+                                        Show map legend
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Preferences -->
+        <div class="tab-pane fade" id="user" role="tabpanel" aria-labelledby="user-tab">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user me-2"></i>Profile Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" value="{{ current_user.username }}" readonly>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" value="{{ current_user.email or '' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="fullName" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="fullName" value="{{ current_user.full_name or '' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="timezone" class="form-label">Timezone</label>
+                                <select class="form-select" id="timezone">
+                                    <option value="UTC">UTC</option>
+                                    <option value="America/New_York">Eastern Time</option>
+                                    <option value="America/Chicago">Central Time</option>
+                                    <option value="America/Denver">Mountain Time</option>
+                                    <option value="America/Los_Angeles">Pacific Time</option>
+                                    <option value="Europe/London">London</option>
+                                    <option value="Europe/Paris">Paris</option>
+                                    <option value="Asia/Tokyo">Tokyo</option>
+                                    <option value="Asia/Kolkata">India</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-palette me-2"></i>Theme & Display
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="theme" class="form-label">Theme</label>
+                                <select class="form-select" id="theme">
+                                    <option value="light">Light</option>
+                                    <option value="dark">Dark</option>
+                                    <option value="auto">Auto (System)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="language" class="form-label">Language</label>
+                                <select class="form-select" id="language">
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="fr">French</option>
+                                    <option value="de">German</option>
+                                    <option value="zh">Chinese</option>
+                                    <option value="ja">Japanese</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="dateFormat" class="form-label">Date Format</label>
+                                <select class="form-select" id="dateFormat">
+                                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                    <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="numberFormat" class="form-label">Number Format</label>
+                                <select class="form-select" id="numberFormat">
+                                    <option value="US">US (1,234.56)</option>
+                                    <option value="EU">European (1.234,56)</option>
+                                    <option value="IN">Indian (1,23,456.78)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Views Configuration -->
+        <div class="tab-pane fade" id="views" role="tabpanel" aria-labelledby="views-tab">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-eye me-2"></i>Table View Configuration
+                            </h5>
+                            <p class="text-muted mb-0">Customize how your table data is displayed in list and detail views</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h6 class="fw-semibold">
+                                        <i class="fas fa-table me-2 text-primary"></i>
+                                        Advanced View Customization
+                                    </h6>
+                                    <p class="text-muted mb-0">
+                                        Configure custom table views with drag-and-drop field management, 
+                                        custom column layouts, and organized detail view partitions for better data presentation.
+                                    </p>
+                                    <ul class="list-unstyled mt-2 mb-0">
+                                        <li><i class="fas fa-check text-success me-2"></i>Drag & drop field organization</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Custom primary and secondary columns</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Organized detail view partitions</li>
+                                        <li><i class="fas fa-check text-success me-2"></i>Live preview of changes</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <div class="d-grid gap-2">
+                                        <a href="{{ url_for('view_config') }}" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-cog me-2"></i>Configure Table Views
+                                        </a>
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Requires active database connection
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Status -->
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <div class="status-card status-card-info">
+                                        <div class="status-card-icon">
+                                            <i class="fas fa-list-ul"></i>
+                                        </div>
+                                        <div class="status-card-content">
+                                            <h6>List View Configuration</h6>
+                                            <p id="listViewStatus">Not configured - using default layout</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="status-card status-card-info">
+                                        <div class="status-card-icon">
+                                            <i class="fas fa-th-large"></i>
+                                        </div>
+                                        <div class="status-card-content">
+                                            <h6>Detail View Configuration</h6>
+                                            <p id="detailViewStatus">Not configured - using default partitions</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+            <!-- Detail View Layout Editor -->
+            <div class="mt-4">
+                <h6 class="fw-semibold">
+                    <i class="fas fa-th-large me-2"></i>Current Detail View Layout
+                </h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Select Table to Configure</label>
+                        <select class="form-select" id="layoutTableSelect" onchange="loadTableLayout()">
+                            <option value="">Select a table...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button class="btn btn-success" onclick="addNewPartition()" id="addPartitionBtn" disabled>
+                            <i class="fas fa-plus me-1"></i>Add Partition
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Layout Display Area -->
+                <div class="mt-3" id="layoutDisplayArea" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-list-ul me-2"></i>Available Fields
+                                    </h6>
+                                </div>
+                                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                    <div id="availableFieldsList">
+                                        <!-- Available fields will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-th-large me-2"></i>Detail View Partitions
+                                    </h6>
+                                    <button class="btn btn-sm btn-primary" onclick="saveLayoutChanges()" id="saveLayoutBtn">
+                                        <i class="fas fa-save me-1"></i>Save Changes
+                                    </button>
+                                </div>
+                                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                    <div id="partitionsEditor">
+                                        <!-- Partitions editor will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Configurations -->
+            <div class="mt-4">
+                <h6 class="fw-semibold">
+                    <i class="fas fa-history me-2"></i>Recent Configurations
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Table Name</th>
+                                <th>Database</th>
+                                <th>Last Modified</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentConfigurationsTable">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    No configurations found. Start by creating your first table view configuration.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Settings -->
+        <div class="tab-pane fade" id="system" role="tabpanel" aria-labelledby="system-tab">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-server me-2"></i>Performance Settings
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="queryTimeout" class="form-label">Query Timeout (seconds)</label>
+                                <input type="number" class="form-control" id="queryTimeout" value="30" min="5" max="300">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="maxRows" class="form-label">Max Rows per Query</label>
+                                <input type="number" class="form-control" id="maxRows" value="1000" min="100" max="10000">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="cacheSize" class="form-label">Cache Size (MB)</label>
+                                <input type="number" class="form-control" id="cacheSize" value="100" min="10" max="1000">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="enableCaching" checked>
+                                    <label class="form-check-label" for="enableCaching">
+                                        Enable query caching
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
             </div>
         </div>
         
-        <div class="card mt-4">
+                <div class="col-lg-6">
+                    <div class="card settings-card">
             <div class="card-header">
-                <h5 class="mb-0 fw-semibold">
-                    <i class="fas fa-info-circle me-2"></i>Configuration Help
+                            <h5 class="mb-0">
+                                <i class="fas fa-bell me-2"></i>Notifications
                 </h5>
             </div>
             <div class="card-body">
-                <p><strong>Default PostgreSQL Settings:</strong></p>
-                <ul>
-                    <li><strong>Host:</strong> localhost (for local PostgreSQL server)</li>
-                    <li><strong>Port:</strong> 5432 (default PostgreSQL port)</li>
-                    <li><strong>Database:</strong> Your database name</li>
-                    <li><strong>Username:</strong> Your PostgreSQL username</li>
-                    <li><strong>Password:</strong> Your PostgreSQL password</li>
-                </ul>
-                <div class="alert alert-info">
-                    <i class="fas fa-lightbulb me-2"></i>
-                    <strong>Tip:</strong> Use "Test Connection" to verify your settings before saving.
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                                    <label class="form-check-label" for="emailNotifications">
+                                        Email notifications
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="browserNotifications" checked>
+                                    <label class="form-check-label" for="browserNotifications">
+                                        Browser notifications
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="connectionAlerts" checked>
+                                    <label class="form-check-label" for="connectionAlerts">
+                                        Connection alerts
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="errorAlerts" checked>
+                                    <label class="form-check-label" for="errorAlerts">
+                                        Error alerts
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-key me-2"></i>Password & Security
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="currentPassword" class="form-label">Current Password</label>
+                                <input type="password" class="form-control" id="currentPassword">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="newPassword" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="newPassword">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirmPassword">
+                            </div>
+                            
+                            <button class="btn btn-warning" onclick="changePassword()">
+                                <i class="fas fa-key me-1"></i>Change Password
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-shield-alt me-2"></i>Session & Access
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="sessionTimeout" class="form-label">Session Timeout (minutes)</label>
+                                <input type="number" class="form-control" id="sessionTimeout" value="60" min="5" max="480">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="requireReauth" checked>
+                                    <label class="form-check-label" for="requireReauth">
+                                        Require re-authentication for sensitive operations
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="logAccess" checked>
+                                    <label class="form-check-label" for="logAccess">
+                                        Log access attempts
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <button class="btn btn-outline-danger" onclick="clearAllSessions()">
+                                    <i class="fas fa-sign-out-alt me-1"></i>Clear All Sessions
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -102,16 +732,993 @@
 
 {% block scripts %}
 <script>
-document.getElementById('testBtn').addEventListener('click', function() {
-    const form = document.getElementById('configForm');
-    const formData = new FormData(form);
+// Settings management
+let settings = {
+    database: {},
+    visualization: {},
+    user: {},
+    system: {},
+    security: {}
+};
+
+// Initialize settings on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Settings page loaded successfully');
     
-    // Change form action temporarily for testing
-    const originalAction = form.action;
-    form.action = "{{ url_for('test_connection') }}";
+    // Initialize tab functionality
+    initializeTabs();
     
-    // Submit form for testing
-    form.submit();
+    loadSettings();
+    checkConnectionStatus();
+    updateConfigProgress();
+    
+    // Add event listeners for real-time updates
+    document.querySelectorAll('input, select').forEach(element => {
+        element.addEventListener('change', function() {
+            updateSettings();
+            updateConfigProgress();
+        });
+    });
+    
+    // Initialize enhanced status updates
+    setInterval(updateLastUpdatedTime, 30000); // Update every 30 seconds
+});
+
+// Initialize tab functionality
+function initializeTabs() {
+    const tabLinks = document.querySelectorAll('.nav-tabs .nav-link');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+    
+    console.log('Initializing tabs:', tabLinks.length, 'links and', tabPanes.length, 'panes');
+    
+    // Hide all tab panes initially
+    tabPanes.forEach(pane => {
+        pane.classList.remove('show', 'active');
+        pane.style.display = 'none';
+    });
+    
+    // Show only the first tab pane
+    if (tabPanes.length > 0) {
+        tabPanes[0].classList.add('show', 'active');
+        tabPanes[0].style.display = 'block';
+    }
+    
+    // Add click event listeners to tab links
+    tabLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active class from all links
+            tabLinks.forEach(l => l.classList.remove('active'));
+            
+            // Add active class to clicked link
+            this.classList.add('active');
+            
+            // Get target tab pane
+            const targetId = this.getAttribute('data-bs-target');
+            const targetPane = document.querySelector(targetId);
+            
+            if (targetPane) {
+                // Hide all panes
+                tabPanes.forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                    pane.style.display = 'none';
+                });
+                
+                // Show target pane
+                targetPane.classList.add('show', 'active');
+                targetPane.style.display = 'block';
+                
+                console.log('Switched to tab:', targetId);
+            }
+        });
+    });
+}
+
+// Load settings from localStorage or server
+function loadSettings() {
+    const savedSettings = localStorage.getItem('postgresqlViewerSettings');
+    if (savedSettings) {
+        settings = JSON.parse(savedSettings);
+        applySettings();
+    }
+}
+
+// Save settings to localStorage
+function saveSettings() {
+    localStorage.setItem('postgresqlViewerSettings', JSON.stringify(settings));
+}
+
+// Apply settings to form elements
+function applySettings() {
+    // Database settings
+    if (settings.database.host) document.getElementById('host').value = settings.database.host;
+    if (settings.database.port) document.getElementById('port').value = settings.database.port;
+    if (settings.database.database) document.getElementById('database').value = settings.database.database;
+    if (settings.database.user) document.getElementById('user').value = settings.database.user;
+    
+    // Visualization settings
+    if (settings.visualization.defaultChartType) document.getElementById('defaultChartType').value = settings.visualization.defaultChartType;
+    if (settings.visualization.chartAnimation !== undefined) document.getElementById('chartAnimation').checked = settings.visualization.chartAnimation;
+    if (settings.visualization.chartColors) document.getElementById('chartColors').value = settings.visualization.chartColors;
+    if (settings.visualization.maxDataPoints) document.getElementById('maxDataPoints').value = settings.visualization.maxDataPoints;
+    
+    // User settings
+    if (settings.user.email) document.getElementById('email').value = settings.user.email;
+    if (settings.user.fullName) document.getElementById('fullName').value = settings.user.fullName;
+    if (settings.user.timezone) document.getElementById('timezone').value = settings.user.timezone;
+    if (settings.user.theme) document.getElementById('theme').value = settings.user.theme;
+    if (settings.user.language) document.getElementById('language').value = settings.user.language;
+    if (settings.user.dateFormat) document.getElementById('dateFormat').value = settings.user.dateFormat;
+    if (settings.user.numberFormat) document.getElementById('numberFormat').value = settings.user.numberFormat;
+    
+    // System settings
+    if (settings.system.queryTimeout) document.getElementById('queryTimeout').value = settings.system.queryTimeout;
+    if (settings.system.maxRows) document.getElementById('maxRows').value = settings.system.maxRows;
+    if (settings.system.cacheSize) document.getElementById('cacheSize').value = settings.system.cacheSize;
+    if (settings.system.enableCaching !== undefined) document.getElementById('enableCaching').checked = settings.system.enableCaching;
+    
+    // Security settings
+    if (settings.security.sessionTimeout) document.getElementById('sessionTimeout').value = settings.security.sessionTimeout;
+    if (settings.security.requireReauth !== undefined) document.getElementById('requireReauth').checked = settings.security.requireReauth;
+    if (settings.security.logAccess !== undefined) document.getElementById('logAccess').checked = settings.security.logAccess;
+}
+
+// Update settings object from form
+function updateSettings() {
+    settings.database = {
+        host: document.getElementById('host').value,
+        port: parseInt(document.getElementById('port').value),
+        database: document.getElementById('database').value,
+        user: document.getElementById('user').value,
+        password: document.getElementById('password').value
+    };
+    
+    settings.visualization = {
+        defaultChartType: document.getElementById('defaultChartType').value,
+        chartAnimation: document.getElementById('chartAnimation').checked,
+        chartColors: document.getElementById('chartColors').value,
+        maxDataPoints: parseInt(document.getElementById('maxDataPoints').value)
+    };
+    
+    settings.user = {
+        email: document.getElementById('email').value,
+        fullName: document.getElementById('fullName').value,
+        timezone: document.getElementById('timezone').value,
+        theme: document.getElementById('theme').value,
+        language: document.getElementById('language').value,
+        dateFormat: document.getElementById('dateFormat').value,
+        numberFormat: document.getElementById('numberFormat').value
+    };
+    
+    settings.system = {
+        queryTimeout: parseInt(document.getElementById('queryTimeout').value),
+        maxRows: parseInt(document.getElementById('maxRows').value),
+        cacheSize: parseInt(document.getElementById('cacheSize').value),
+        enableCaching: document.getElementById('enableCaching').checked
+    };
+    
+    settings.security = {
+        sessionTimeout: parseInt(document.getElementById('sessionTimeout').value),
+        requireReauth: document.getElementById('requireReauth').checked,
+        logAccess: document.getElementById('logAccess').checked
+    };
+    
+    saveSettings();
+}
+
+// Enhanced test database connection with visual feedback
+async function testConnection() {
+    const formData = new FormData(document.getElementById('databaseConfigForm'));
+    const config = Object.fromEntries(formData);
+    
+    // Show connecting status
+    const indicator = document.getElementById('connectionIndicator');
+    const text = document.getElementById('connectionText');
+    const subtext = document.getElementById('connectionSubtext');
+    const statusCard = document.getElementById('connectionStatusCard');
+    
+    // Set connecting state
+    statusCard.classList.remove('success', 'error');
+    statusCard.classList.add('warning');
+    indicator.className = 'connection-indicator connecting';
+    text.textContent = 'Testing...';
+    subtext.textContent = 'Verifying database connection';
+    
+    try {
+        const response = await fetch('/api/test_connection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(config)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Connection successful!', 'success');
+            updateConnectionStatus(true, result.message);
+        } else {
+            showAlert('Connection failed: ' + result.message, 'danger');
+            updateConnectionStatus(false, result.message);
+        }
+    } catch (error) {
+        showAlert('Error testing connection: ' + error.message, 'danger');
+        updateConnectionStatus(false, error.message);
+    }
+}
+
+// Save database configuration
+async function saveDatabaseConfig() {
+    updateSettings();
+    
+    try {
+        const response = await fetch('/api/save_config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings.database)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Database configuration saved successfully!', 'success');
+            updateConnectionStatus(true, 'Connected');
+        } else {
+            showAlert('Failed to save configuration: ' + result.message, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error saving configuration: ' + error.message, 'danger');
+    }
+}
+
+// Check connection status
+async function checkConnectionStatus() {
+    try {
+        const response = await fetch('/api/connection/status');
+        const result = await response.json();
+        
+        updateConnectionStatus(result.success, result.message);
+        
+        if (result.success && result.db_info) {
+            updateDatabaseInfo(result.db_info);
+        }
+    } catch (error) {
+        updateConnectionStatus(false, 'Error checking status');
+    }
+}
+
+// Enhanced connection status display
+function updateConnectionStatus(connected, message) {
+    const indicator = document.getElementById('connectionIndicator');
+    const text = document.getElementById('connectionText');
+    const subtext = document.getElementById('connectionSubtext');
+    const statusCard = document.getElementById('connectionStatusCard');
+    
+    // Remove existing status classes
+    statusCard.classList.remove('success', 'warning', 'error');
+    
+    if (connected) {
+        indicator.className = 'connection-indicator connected';
+        text.textContent = 'Connected';
+        subtext.textContent = 'Database connection is active';
+        statusCard.classList.add('success');
+    } else {
+        indicator.className = 'connection-indicator disconnected';
+        text.textContent = 'Disconnected';
+        subtext.textContent = message || 'No database connection';
+        statusCard.classList.add('error');
+    }
+    
+    updateLastUpdatedTime();
+}
+
+// Update configuration progress
+function updateConfigProgress() {
+    const requiredFields = ['host', 'port', 'database', 'user', 'password'];
+    let filledFields = 0;
+    
+    requiredFields.forEach(field => {
+        const element = document.getElementById(field);
+        if (element && element.value.trim()) {
+            filledFields++;
+        }
+    });
+    
+    const progress = (filledFields / requiredFields.length) * 100;
+    const progressBar = document.getElementById('configProgress');
+    const progressText = document.getElementById('progressText');
+    
+    progressBar.style.setProperty('--progress', `${progress}%`);
+    progressText.textContent = `${Math.round(progress)}% Complete`;
+    
+    // Update progress bar color based on completion
+    if (progress === 100) {
+        progressBar.classList.remove('warning');
+        progressBar.classList.add('success');
+    } else if (progress > 0) {
+        progressBar.classList.remove('success');
+        progressBar.classList.add('warning');
+    } else {
+        progressBar.classList.remove('success', 'warning');
+    }
+}
+
+// Update last updated timestamp
+function updateLastUpdatedTime() {
+    const lastUpdated = document.getElementById('lastUpdated');
+    if (lastUpdated) {
+        const now = new Date();
+        lastUpdated.textContent = now.toLocaleTimeString();
+    }
+}
+
+// Show settings saved status
+function showSettingsSaved() {
+    const statusIndicator = document.getElementById('settingsStatus');
+    statusIndicator.classList.remove('d-none');
+    
+    setTimeout(() => {
+        statusIndicator.classList.add('d-none');
+    }, 3000);
+}
+
+// Enhanced database information display
+function updateDatabaseInfo(dbInfo) {
+    const dbInfoDiv = document.getElementById('dbInfo');
+    const dbInfoCard = document.getElementById('dbInfoCard');
+    
+    // Remove existing status classes
+    dbInfoCard.classList.remove('success', 'warning', 'error');
+    dbInfoCard.classList.add('success');
+    
+    dbInfoDiv.innerHTML = `
+        <div class="row g-2">
+            <div class="col-6">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle text-info me-2"></i>
+                    <div>
+                        <small class="text-muted">Version</small>
+                        <div class="fw-semibold small">${dbInfo.version || 'Unknown'}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-table text-primary me-2"></i>
+                    <div>
+                        <small class="text-muted">Tables</small>
+                        <div class="fw-semibold small">${dbInfo.table_count || 0}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-hdd text-warning me-2"></i>
+                    <div>
+                        <small class="text-muted">Size</small>
+                        <div class="fw-semibold small">${dbInfo.size || 'Unknown'}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-clock text-success me-2"></i>
+                    <div>
+                        <small class="text-muted">Updated</small>
+                        <div class="fw-semibold small">${new Date().toLocaleTimeString()}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Toggle password visibility
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleButton = passwordInput.nextElementSibling;
+    const icon = toggleButton.querySelector('i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        passwordInput.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// Enhanced save all settings with visual feedback
+function saveAllSettings() {
+    updateSettings();
+    showSettingsSaved();
+    showAlert('All settings saved successfully!', 'success');
+    
+    // Trigger a brief animation on the save button
+    const saveBtn = event.target;
+    saveBtn.classList.add('btn-success');
+    saveBtn.innerHTML = '<i class="fas fa-check me-2"></i>Saved!';
+    
+    setTimeout(() => {
+        saveBtn.classList.remove('btn-success');
+        saveBtn.classList.add('btn-primary');
+        saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save All Settings';
+    }, 2000);
+}
+
+// Show alert
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.insertBefore(alertDiv, document.body.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Refresh connection
+function refreshConnection() {
+    checkConnectionStatus();
+}
+
+// Disconnect database
+async function disconnectDatabase() {
+    try {
+        const response = await fetch('/api/disconnect', { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.success) {
+            updateConnectionStatus(false, 'Disconnected');
+            showAlert('Database disconnected successfully', 'info');
+        } else {
+            showAlert('Failed to disconnect: ' + result.message, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error disconnecting: ' + error.message, 'danger');
+    }
+}
+
+// Change password
+async function changePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showAlert('Please fill in all password fields', 'warning');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showAlert('New passwords do not match', 'warning');
+        return;
+    }
+    
+    if (newPassword.length < 8) {
+        showAlert('New password must be at least 8 characters long', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/change_password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                currentPassword,
+                newPassword
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Password changed successfully!', 'success');
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        } else {
+            showAlert('Failed to change password: ' + result.message, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error changing password: ' + error.message, 'danger');
+    }
+}
+
+// Clear all sessions
+async function clearAllSessions() {
+    if (!confirm('Are you sure you want to clear all sessions? This will log out all users.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/clear_sessions', { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('All sessions cleared successfully', 'success');
+        } else {
+            showAlert('Failed to clear sessions: ' + result.message, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error clearing sessions: ' + error.message, 'danger');
+    }
+}
+
+// Load view configuration status
+function loadViewConfigurationStatus() {
+    // Check if we have view configurations
+    fetch('/api/view-config/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateViewConfigurationStatus(data.configurations);
+            }
+        })
+        .catch(error => {
+            console.log('View configuration status not available');
+        });
+}
+
+// Update view configuration status display
+function updateViewConfigurationStatus(configurations) {
+    const listViewStatus = document.getElementById('listViewStatus');
+    const detailViewStatus = document.getElementById('detailViewStatus');
+    const recentConfigurationsTable = document.getElementById('recentConfigurationsTable');
+
+    if (configurations && configurations.length > 0) {
+        // Update status indicators
+        listViewStatus.textContent = `${configurations.length} table(s) configured`;
+        detailViewStatus.textContent = `${configurations.length} table(s) configured`;
+        
+        // Update recent configurations table
+        recentConfigurationsTable.innerHTML = '';
+        configurations.slice(0, 5).forEach(config => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${config.table_name}</td>
+                <td>${config.database_name || 'Current Database'}</td>
+                <td>${new Date(config.updated_at * 1000).toLocaleDateString()}</td>
+                <td>
+                    <a href="/view-config" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </td>
+            `;
+            recentConfigurationsTable.appendChild(row);
+        });
+    }
+}
+
+// Global variables for layout editor
+let currentDatabaseId = null;
+let currentTableName = null;
+let currentTableColumns = [];
+let currentLayoutConfig = null;
+let layoutEditorInitialized = false;
+
+// Load available tables for layout configuration
+function loadTablesForLayout() {
+    // Get current database info and load tables
+    fetch('/api/tables')
+        .then(response => response.json())
+        .then(data => {
+            const tableSelect = document.getElementById('layoutTableSelect');
+            tableSelect.innerHTML = '<option value="">Select a table...</option>';
+            
+            if (data.success && data.tables) {
+                data.tables.forEach(table => {
+                    tableSelect.innerHTML += `<option value="${table}">${table}</option>`;
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error loading tables:', error);
+        });
+}
+
+// Load table layout configuration
+function loadTableLayout() {
+    const tableSelect = document.getElementById('layoutTableSelect');
+    const tableName = tableSelect.value;
+    
+    if (!tableName) {
+        document.getElementById('layoutDisplayArea').style.display = 'none';
+        document.getElementById('addPartitionBtn').disabled = true;
+        return;
+    }
+    
+    currentTableName = tableName;
+    document.getElementById('addPartitionBtn').disabled = false;
+    
+    // Load table columns
+    fetch(`/api/table/${tableName}/columns`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentTableColumns = data.columns.map(col => ({
+                    name: col.column_name,
+                    type: col.data_type
+                }));
+                
+                // Load existing configuration
+                loadExistingConfiguration(tableName);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading table columns:', error);
+            showAlert('Error loading table columns', 'danger');
+        });
+}
+
+// Load existing configuration for the table
+function loadExistingConfiguration(tableName) {
+    // First get current database ID
+    fetch('/api/view-config/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentDatabaseId = data.current_database_id;
+                
+                if (!currentDatabaseId) {
+                    throw new Error('No current database connected');
+                }
+                
+                // Try to load existing configuration
+                return fetch(`/api/view-config/load/${currentDatabaseId}/${tableName}`);
+            }
+        })
+        .then(response => {
+            if (response && response.ok) {
+                return response.json();
+            } else {
+                // No existing configuration, create default
+                return {
+                    configuration: {
+                        detail: {
+                            partitions: [
+                                {
+                                    name: "General Information",
+                                    fields: []
+                                }
+                            ]
+                        }
+                    }
+                };
+            }
+        })
+        .then(data => {
+            currentLayoutConfig = data.configuration;
+            displayLayoutEditor();
+        })
+        .catch(error => {
+            console.error('Error loading configuration:', error);
+            // Create default configuration
+            currentLayoutConfig = {
+                detail: {
+                    partitions: [
+                        {
+                            name: "General Information",
+                            fields: []
+                        }
+                    ]
+                }
+            };
+            displayLayoutEditor();
+        });
+}
+
+// Display the layout editor
+function displayLayoutEditor() {
+    document.getElementById('layoutDisplayArea').style.display = 'block';
+    
+    // Populate available fields
+    populateAvailableFields();
+    
+    // Populate partitions editor
+    populatePartitionsEditor();
+    
+    // Initialize drag and drop if not already done
+    if (!layoutEditorInitialized) {
+        initializeLayoutDragDrop();
+        layoutEditorInitialized = true;
+    }
+}
+
+// Populate available fields list
+function populateAvailableFields() {
+    const container = document.getElementById('availableFieldsList');
+    const usedFields = new Set();
+    
+    // Collect already used fields
+    if (currentLayoutConfig.detail && currentLayoutConfig.detail.partitions) {
+        currentLayoutConfig.detail.partitions.forEach(partition => {
+            partition.fields.forEach(field => usedFields.add(field));
+        });
+    }
+    
+    // Display available fields
+    container.innerHTML = '';
+    currentTableColumns.forEach(column => {
+        if (!usedFields.has(column.name)) {
+            const fieldElement = createDraggableField(column);
+            container.appendChild(fieldElement);
+        }
+    });
+    
+    if (container.children.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center">All fields are assigned to partitions</div>';
+    }
+}
+
+// Create draggable field element
+function createDraggableField(column) {
+    const fieldDiv = document.createElement('div');
+    fieldDiv.className = 'draggable-field mb-2';
+    fieldDiv.draggable = true;
+    fieldDiv.dataset.fieldName = column.name;
+    fieldDiv.dataset.fieldType = column.type;
+    
+    fieldDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center p-2 border rounded">
+            <div>
+                <strong>${column.name}</strong>
+                <small class="text-muted d-block">${column.type}</small>
+            </div>
+            <i class="fas fa-grip-vertical text-muted"></i>
+        </div>
+    `;
+    
+    // Add drag event listeners
+    fieldDiv.addEventListener('dragstart', handleFieldDragStart);
+    fieldDiv.addEventListener('dragend', handleFieldDragEnd);
+    
+    return fieldDiv;
+}
+
+// Populate partitions editor
+function populatePartitionsEditor() {
+    const container = document.getElementById('partitionsEditor');
+    container.innerHTML = '';
+    
+    if (currentLayoutConfig.detail && currentLayoutConfig.detail.partitions) {
+        currentLayoutConfig.detail.partitions.forEach((partition, index) => {
+            const partitionElement = createPartitionElement(partition, index);
+            container.appendChild(partitionElement);
+        });
+    }
+}
+
+// Create partition element
+function createPartitionElement(partition, index) {
+    const partitionDiv = document.createElement('div');
+    partitionDiv.className = 'partition-editor mb-3';
+    partitionDiv.dataset.partitionIndex = index;
+    
+    partitionDiv.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <input type="text" class="form-control partition-name-input" value="${partition.name}" 
+                           onchange="updatePartitionName(${index}, this.value)">
+                    <button class="btn btn-sm btn-outline-danger ms-2" onclick="removePartition(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body partition-drop-zone" data-partition-index="${index}">
+                <div class="partition-fields">
+                    ${partition.fields.map(field => createAssignedFieldElement(field)).join('')}
+                </div>
+                <div class="drop-placeholder ${partition.fields.length > 0 ? 'd-none' : ''}">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Drop fields here</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return partitionDiv;
+}
+
+// Create assigned field element
+function createAssignedFieldElement(fieldName) {
+    const fieldData = currentTableColumns.find(col => col.name === fieldName);
+    return `
+        <div class="assigned-field d-flex justify-content-between align-items-center p-2 mb-2 bg-light border rounded" 
+             data-field-name="${fieldName}">
+            <div>
+                <strong>${fieldName}</strong>
+                <small class="text-muted d-block">${fieldData ? fieldData.type : 'unknown'}</small>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" onclick="removeFieldFromPartition('${fieldName}')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+}
+
+// Initialize drag and drop functionality
+function initializeLayoutDragDrop() {
+    // This will be called when partitions are populated
+    document.addEventListener('dragover', handleDragOver);
+    document.addEventListener('drop', handleDrop);
+}
+
+// Drag and drop event handlers
+function handleFieldDragStart(e) {
+    e.dataTransfer.setData('text/plain', e.target.dataset.fieldName);
+    e.target.classList.add('dragging');
+}
+
+function handleFieldDragEnd(e) {
+    e.target.classList.remove('dragging');
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const fieldName = e.dataTransfer.getData('text/plain');
+    const dropZone = e.target.closest('.partition-drop-zone');
+    
+    if (!dropZone || !fieldName) return;
+    
+    const partitionIndex = parseInt(dropZone.dataset.partitionIndex);
+    addFieldToPartition(fieldName, partitionIndex);
+}
+
+// Add field to partition
+function addFieldToPartition(fieldName, partitionIndex) {
+    if (!currentLayoutConfig.detail.partitions[partitionIndex]) return;
+    
+    // Remove from current partition if it exists
+    removeFieldFromAllPartitions(fieldName);
+    
+    // Add to new partition
+    currentLayoutConfig.detail.partitions[partitionIndex].fields.push(fieldName);
+    
+    // Refresh the display
+    populateAvailableFields();
+    populatePartitionsEditor();
+}
+
+// Remove field from partition
+function removeFieldFromPartition(fieldName) {
+    removeFieldFromAllPartitions(fieldName);
+    populateAvailableFields();
+    populatePartitionsEditor();
+}
+
+// Remove field from all partitions
+function removeFieldFromAllPartitions(fieldName) {
+    currentLayoutConfig.detail.partitions.forEach(partition => {
+        const index = partition.fields.indexOf(fieldName);
+        if (index > -1) {
+            partition.fields.splice(index, 1);
+        }
+    });
+}
+
+// Add new partition
+function addNewPartition() {
+    if (!currentLayoutConfig.detail.partitions) {
+        currentLayoutConfig.detail.partitions = [];
+    }
+    
+    currentLayoutConfig.detail.partitions.push({
+        name: "New Partition",
+        fields: []
+    });
+    
+    populatePartitionsEditor();
+}
+
+// Remove partition
+function removePartition(index) {
+    if (currentLayoutConfig.detail.partitions.length <= 1) {
+        showAlert('At least one partition is required', 'warning');
+        return;
+    }
+    
+    // Move fields back to available
+    const partition = currentLayoutConfig.detail.partitions[index];
+    // Fields will automatically become available when partition is removed
+    
+    currentLayoutConfig.detail.partitions.splice(index, 1);
+    populateAvailableFields();
+    populatePartitionsEditor();
+}
+
+// Update partition name
+function updatePartitionName(index, newName) {
+    if (currentLayoutConfig.detail.partitions[index]) {
+        currentLayoutConfig.detail.partitions[index].name = newName;
+    }
+}
+
+// Save layout changes
+function saveLayoutChanges() {
+    if (!currentDatabaseId || !currentTableName) {
+        showAlert('Please select a table first', 'warning');
+        return;
+    }
+    
+    const configData = {
+        database_id: currentDatabaseId,
+        table_name: currentTableName,
+        configuration: currentLayoutConfig
+    };
+    
+    fetch('/api/view-config/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(configData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Layout configuration saved successfully!', 'success');
+            loadViewConfigurationStatus(); // Refresh the status
+        } else {
+            showAlert('Error saving configuration: ' + (data.error || 'Unknown error'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving configuration:', error);
+        showAlert('Error saving configuration', 'danger');
+    });
+}
+
+// Get current database ID from status API
+function getCurrentDatabaseId() {
+    // Return the stored database ID if available
+    if (currentDatabaseId) {
+        return currentDatabaseId;
+    }
+    
+    // Fetch from server if not available
+    fetch('/api/view-config/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.configurations.length > 0) {
+                // Find a configuration for the current database
+                const currentConfig = data.configurations.find(config => config.is_current);
+                if (currentConfig) {
+                    currentDatabaseId = currentConfig.database_id;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error getting current database ID:', error);
+        });
+        
+    return currentDatabaseId || 'unknown';
+}
+
+// Add to existing DOMContentLoaded event listener
+document.addEventListener('DOMContentLoaded', function() {
+    // ... existing initialization code ...
+    loadViewConfigurationStatus();
+    loadTablesForLayout();
 });
 </script>
 {% endblock %}

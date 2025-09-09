@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Sign In - DataVault Pro{% endblock %}
+{% block title %}Sign In - UTS 2.0{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <div class="row min-vh-100">
         <!-- Left side - Enhanced Branding -->
-        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center bg-gradient position-relative overflow-hidden">
+        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center login-left-panel position-relative overflow-hidden">
             <!-- Animated Background Elements -->
             <div class="floating-elements">
                 <div class="floating-element element-1"></div>
@@ -16,23 +16,16 @@
             </div>
             
             <!-- Background Pattern -->
-            <div class="position-absolute w-100 h-100 opacity-20" style="background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="15" height="15" patternUnits="userSpaceOnUse"><path d="M 15 0 L 0 0 0 15" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');"></div>
+            <div class="position-absolute w-100 h-100 opacity-10 login-bg-pattern"></div>
             
             <div class="text-center text-white position-relative z-3 px-5">
                 <!-- Enhanced Logo & Branding -->
                 <div class="mb-5">
                     <div class="brand-logo mb-4">
-                        <div class="logo-container">
-                            <div class="logo-primary">
-                                <i class="fas fa-database"></i>
-                            </div>
-                            <div class="logo-overlay">
-                                <i class="fas fa-shield-alt"></i>
-                            </div>
-                        </div>
+                        <img src="{{ url_for('static', filename='images/uts-logo.png') }}" alt="UTS 2.0" class="login-main-logo">
                     </div>
-                    <h1 class="brand-title fw-bold mb-3">DataVault Pro</h1>
-                    <p class="lead fw-medium opacity-90 mb-0">Enterprise-grade PostgreSQL management platform</p>
+                    <h1 class="brand-title fw-bold mb-3">UTS 2.0</h1>
+                    <p class="lead fw-medium opacity-90 mb-0">Universal Tracking System</p>
                     <small class="opacity-75 d-block mt-2">Trusted by 10,000+ developers worldwide</small>
                 </div>
                 
@@ -41,7 +34,7 @@
                     <div class="col-4">
                         <div class="feature-card">
                             <div class="feature-icon mb-3">
-                                <i class="fas fa-shield-check"></i>
+                                <i class="fas fa-lock"></i>
                             </div>
                             <h6 class="fw-semibold mb-2">Bank-Level Security</h6>
                             <small class="opacity-80">End-to-end encryption</small>
@@ -94,15 +87,14 @@
         </div>
         
         <!-- Right side - Professional Login Form -->
-        <div class="col-lg-6 d-flex align-items-center justify-content-center bg-light position-relative">
-            <div class="login-container w-100 px-4">
+        <div class="col-lg-6 d-flex align-items-center justify-content-center login-right-panel position-relative">
+            <div class="login-container w-100 px-4 py-5">
                 <!-- Mobile Logo -->
                 <div class="text-center mb-4 d-lg-none">
                     <div class="mobile-logo mb-3">
-                        <i class="fas fa-database fa-3x text-primary"></i>
-                        <i class="fas fa-shield-alt fa-lg text-accent mobile-logo-overlay"></i>
+                        <img src="{{ url_for('static', filename='images/uts-logo.png') }}" alt="UTS 2.0" class="mobile-logo-img">
                     </div>
-                    <h3 class="fw-bold text-gradient">DataVault Pro</h3>
+                    <h3 class="fw-bold text-gradient">UTS 2.0</h3>
                 </div>
                 
                 <div class="login-card card shadow-lg border-0">
@@ -110,7 +102,7 @@
                         <!-- Header -->
                         <div class="text-center mb-5">
                             <h2 class="login-title fw-bold mb-2">Welcome Back</h2>
-                            <p class="login-subtitle text-muted mb-0">Sign in to access your database dashboard</p>
+                            <p class="login-subtitle text-muted mb-0">Sign in to access your tracking system</p>
                         </div>
 
                         <!-- Error Container -->
@@ -298,6 +290,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-focus username field
     document.getElementById('username').focus();
     
+    // Remember me toggle feedback
+    const rememberMeToggle = document.getElementById('remember_me');
+    const rememberMeText = document.querySelector('.remember-text label');
+    
+    rememberMeToggle.addEventListener('change', function() {
+        if (this.checked) {
+            rememberMeText.innerHTML = '<i class="fas fa-clock me-1"></i>Remember me';
+            console.log('Remember me enabled - session will last 30 days');
+        } else {
+            rememberMeText.innerHTML = 'Remember me';
+            console.log('Remember me disabled - session will expire when browser closes');
+        }
+    });
+    
     // Real-time validation
     inputs.forEach(input => {
         input.addEventListener('blur', validateField);
@@ -323,6 +329,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!validateForm()) {
             e.preventDefault();
             return;
+        }
+        
+        // Debug: Log remember me checkbox state
+        const rememberMeCheckbox = document.getElementById('remember_me');
+        console.log('Remember me checkbox checked:', rememberMeCheckbox.checked);
+        console.log('Remember me checkbox value:', rememberMeCheckbox.value);
+        
+        // Ensure checkbox value is properly set for form submission
+        if (rememberMeCheckbox.checked) {
+            rememberMeCheckbox.value = 'on';
         }
         
         // Show loading state

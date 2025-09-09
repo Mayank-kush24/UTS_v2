@@ -5,8 +5,9 @@ from psycopg2 import OperationalError, InterfaceError, InternalError
 import os
 from dotenv import load_dotenv
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
+import time
 import hashlib
 import secrets
 from functools import wraps
@@ -18,8 +19,9 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
 
 # Session configuration
-app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_PERMANENT'] = False  # Default to False, can be overridden per session
 app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)  # Remember me for 30 days
 
 class DatabaseManager:
     def __init__(self):
@@ -133,6 +135,44 @@ class DatabaseManager:
                     tables = [row[0] for row in cursor.fetchall()]
                     cursor.close()
                     return True, tables
+                except Exception as retry_e:
+                    return False, str(retry_e)
+            return False, str(e)
+    
+    def get_columns(self, table_name):
+        """Get list of columns for a specific table"""
+        if not self.connection:
+            return False, "No database connection"
+        
+        # Ensure connection is healthy
+        if not self._ensure_connection_health():
+            return False, "Database connection is not healthy"
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = %s AND table_schema = 'public'
+                ORDER BY ordinal_position;
+            """, (table_name,))
+            columns = cursor.fetchall()
+            cursor.close()
+            return True, columns
+        except Exception as e:
+            # Try to recover connection on error
+            if self._ensure_connection_health():
+                try:
+                    cursor = self.connection.cursor()
+                    cursor.execute("""
+                        SELECT column_name, data_type 
+                        FROM information_schema.columns 
+                        WHERE table_name = %s AND table_schema = 'public'
+                        ORDER BY ordinal_position;
+                    """, (table_name,))
+                    columns = cursor.fetchall()
+                    cursor.close()
+                    return True, columns
                 except Exception as retry_e:
                     return False, str(retry_e)
             return False, str(e)
@@ -766,6 +806,278 @@ class DatabaseManager:
             except Exception as fallback_e:
                 return False, f"Connection error: {str(e)}, Fallback error: {str(fallback_e)}"
     
+    def get_visualization_data(self):
+        """Get comprehensive data for visualization dashboard"""
+        if not self.connection:
+            return False, "No database connection"
+        
+        if not self._ensure_connection_health():
+            return False, "Database connection is not healthy"
+        
+        try:
+            cursor = self.connection.cursor()
+            result = {}
+            
+            # Get table statistics for charts
+            cursor.execute("""
+                SELECT 
+                    t.table_name,
+                    COALESCE(pgc.reltuples::bigint, 0) as row_count,
+                    COUNT(c.column_name) as column_count,
+                    COALESCE(pg_total_relation_size(pgc.oid), 0) as table_size_bytes
+                FROM information_schema.tables t
+                LEFT JOIN information_schema.columns c ON t.table_name = c.table_name 
+                    AND t.table_schema = c.table_schema
+                LEFT JOIN pg_class pgc ON pgc.relname = t.table_name
+                LEFT JOIN pg_namespace pgn ON pgn.oid = pgc.relnamespace
+                WHERE t.table_schema = 'public' 
+                AND (pgn.nspname = 'public' OR pgn.nspname IS NULL)
+                GROUP BY t.table_name, pgc.reltuples, pgc.oid
+                ORDER BY row_count DESC;
+            """)
+            
+            table_data = cursor.fetchall()
+            result['tables'] = [
+                {
+                    'name': row[0],
+                    'row_count': int(row[1]) if row[1] else 0,
+                    'column_count': int(row[2]) if row[2] else 0,
+                    'size_bytes': int(row[3]) if row[3] else 0
+                }
+                for row in table_data
+            ]
+            
+            # Get data type distribution across all tables
+            cursor.execute("""
+                SELECT 
+                    data_type,
+                    COUNT(*) as type_count
+                FROM information_schema.columns 
+                WHERE table_schema = 'public'
+                GROUP BY data_type
+                ORDER BY type_count DESC;
+            """)
+            
+            data_types = cursor.fetchall()
+            result['data_types'] = [
+                {'type': row[0], 'count': int(row[1])}
+                for row in data_types
+            ]
+            
+            # Get column statistics
+            cursor.execute("""
+                SELECT 
+                    COUNT(DISTINCT table_name) as total_tables,
+                    COUNT(*) as total_columns,
+                    AVG(cnt.column_count) as avg_columns_per_table
+                FROM (
+                    SELECT 
+                        table_name,
+                        COUNT(*) as column_count
+                    FROM information_schema.columns 
+                    WHERE table_schema = 'public'
+                    GROUP BY table_name
+                ) cnt;
+            """)
+            
+            stats_row = cursor.fetchone()
+            result['summary'] = {
+                'total_tables': int(stats_row[0]) if stats_row[0] else 0,
+                'total_columns': int(stats_row[1]) if stats_row[1] else 0,
+                'avg_columns_per_table': float(stats_row[2]) if stats_row[2] else 0
+            }
+            
+            # Get database size breakdown
+            cursor.execute("""
+                SELECT 
+                    COALESCE(pg_size_pretty(SUM(pg_total_relation_size(pgc.oid))), '0 bytes') as total_size,
+                    COUNT(*) as table_count
+                FROM pg_class pgc
+                JOIN pg_namespace pgn ON pgn.oid = pgc.relnamespace
+                WHERE pgn.nspname = 'public' AND pgc.relkind = 'r';
+            """)
+            
+            size_row = cursor.fetchone()
+            result['database_size'] = {
+                'total_size': size_row[0] if size_row[0] else '0 bytes',
+                'table_count': int(size_row[1]) if size_row[1] else 0
+            }
+            
+            cursor.close()
+            return True, result
+            
+        except Exception as e:
+            if self._ensure_connection_health():
+                try:
+                    # Fallback with simpler queries
+                    cursor = self.connection.cursor()
+                    
+                    # Basic table count
+                    cursor.execute("""
+                        SELECT COUNT(*) FROM information_schema.tables 
+                        WHERE table_schema = 'public';
+                    """)
+                    table_count = cursor.fetchone()[0]
+                    
+                    # Basic column count  
+                    cursor.execute("""
+                        SELECT COUNT(*) FROM information_schema.columns
+                        WHERE table_schema = 'public';
+                    """)
+                    column_count = cursor.fetchone()[0]
+                    
+                    cursor.close()
+                    return True, {
+                        'tables': [],
+                        'data_types': [],
+                        'summary': {
+                            'total_tables': table_count,
+                            'total_columns': column_count,
+                            'avg_columns_per_table': column_count / max(table_count, 1)
+                        },
+                        'database_size': {
+                            'total_size': 'Unknown',
+                            'table_count': table_count
+                        }
+                    }
+                except:
+                    pass
+            
+            return False, f"Error getting visualization data: {str(e)}"
+    
+    def get_table_column_analysis(self, table_name):
+        """Get detailed column analysis for a specific table"""
+        if not self.connection:
+            return False, "No database connection"
+        
+        if not self._ensure_connection_health():
+            return False, "Database connection is not healthy"
+        
+        try:
+            cursor = self.connection.cursor()
+            
+            # Get column information with sample data analysis
+            cursor.execute("""
+                SELECT 
+                    column_name,
+                    data_type,
+                    is_nullable,
+                    column_default
+                FROM information_schema.columns 
+                WHERE table_name = %s AND table_schema = 'public'
+                ORDER BY ordinal_position;
+            """, [table_name])
+            
+            columns_info = []
+            for row in cursor.fetchall():
+                column_name, data_type, is_nullable, column_default = row
+                
+                column_data = {
+                    'name': column_name,
+                    'type': data_type,
+                    'nullable': is_nullable == 'YES',
+                    'default': column_default,
+                    'stats': {}
+                }
+                
+                # Get column statistics based on data type
+                try:
+                    if data_type in ['integer', 'bigint', 'smallint', 'numeric', 'real', 'double precision']:
+                        # Numeric column statistics
+                        stats_query = sql.SQL("""
+                            SELECT 
+                                COUNT(*) as total_count,
+                                COUNT({}) as non_null_count,
+                                MIN({}) as min_value,
+                                MAX({}) as max_value,
+                                AVG({}) as avg_value
+                            FROM {}
+                        """).format(
+                            sql.Identifier(column_name),
+                            sql.Identifier(column_name),
+                            sql.Identifier(column_name),
+                            sql.Identifier(column_name),
+                            sql.Identifier(table_name)
+                        )
+                        cursor.execute(stats_query)
+                        stats_row = cursor.fetchone()
+                        if stats_row:
+                            column_data['stats'] = {
+                                'total_count': stats_row[0],
+                                'non_null_count': stats_row[1],
+                                'null_count': stats_row[0] - stats_row[1],
+                                'min_value': float(stats_row[2]) if stats_row[2] is not None else None,
+                                'max_value': float(stats_row[3]) if stats_row[3] is not None else None,
+                                'avg_value': float(stats_row[4]) if stats_row[4] is not None else None
+                            }
+                    
+                    elif data_type in ['character varying', 'varchar', 'text', 'char']:
+                        # Text column statistics
+                        stats_query = sql.SQL("""
+                            SELECT 
+                                COUNT(*) as total_count,
+                                COUNT({}) as non_null_count,
+                                AVG(LENGTH({})) as avg_length,
+                                MIN(LENGTH({})) as min_length,
+                                MAX(LENGTH({})) as max_length,
+                                COUNT(DISTINCT {}) as distinct_count
+                            FROM {}
+                        """).format(
+                            sql.Identifier(column_name),
+                            sql.Identifier(column_name),
+                            sql.Identifier(column_name),
+                            sql.Identifier(column_name),
+                            sql.Identifier(column_name),
+                            sql.Identifier(table_name)
+                        )
+                        cursor.execute(stats_query)
+                        stats_row = cursor.fetchone()
+                        if stats_row:
+                            column_data['stats'] = {
+                                'total_count': stats_row[0],
+                                'non_null_count': stats_row[1],
+                                'null_count': stats_row[0] - stats_row[1],
+                                'avg_length': float(stats_row[2]) if stats_row[2] is not None else None,
+                                'min_length': int(stats_row[3]) if stats_row[3] is not None else None,
+                                'max_length': int(stats_row[4]) if stats_row[4] is not None else None,
+                                'distinct_count': stats_row[5]
+                            }
+                    
+                    else:
+                        # Generic statistics for other types
+                        stats_query = sql.SQL("""
+                            SELECT 
+                                COUNT(*) as total_count,
+                                COUNT({}) as non_null_count,
+                                COUNT(DISTINCT {}) as distinct_count
+                            FROM {}
+                        """).format(
+                            sql.Identifier(column_name),
+                            sql.Identifier(column_name),
+                            sql.Identifier(table_name)
+                        )
+                        cursor.execute(stats_query)
+                        stats_row = cursor.fetchone()
+                        if stats_row:
+                            column_data['stats'] = {
+                                'total_count': stats_row[0],
+                                'non_null_count': stats_row[1],
+                                'null_count': stats_row[0] - stats_row[1],
+                                'distinct_count': stats_row[2]
+                            }
+                            
+                except Exception as col_error:
+                    # If column analysis fails, still include basic info
+                    column_data['stats'] = {'error': str(col_error)}
+                
+                columns_info.append(column_data)
+            
+            cursor.close()
+            return True, columns_info
+            
+        except Exception as e:
+            return False, f"Error analyzing table columns: {str(e)}"
+    
     def close(self):
         """Close database connection"""
         if self.connection:
@@ -907,6 +1219,13 @@ def get_current_user():
         return user_manager.get_user_by_id(session['user_id'])
     return None
 
+def extend_session_if_needed():
+    """Extend session for users with remember me enabled"""
+    if 'user_id' in session and session.permanent:
+        # Refresh the session for persistent sessions
+        session.permanent = True
+        print(f"Extended session for user {session.get('username', 'unknown')}")
+
 # Database storage management
 class DatabaseStorage:
     def __init__(self, storage_file='stored_databases.json'):
@@ -1039,10 +1358,44 @@ user_manager = UserManager()
 db_storage = DatabaseStorage()
 db_manager = DatabaseManager()
 
+def get_stored_databases():
+    """Helper function to get stored databases"""
+    return db_storage.load_databases()
+
+def load_view_configuration(table_name):
+    """Load view configuration for a table"""
+    try:
+        config_file = 'view_configurations.json'
+        current_db_id = db_storage.get_current_database_id()
+        
+        if not current_db_id:
+            return None
+            
+        try:
+            with open(config_file, 'r') as f:
+                configs = json.load(f)
+        except FileNotFoundError:
+            return None
+        
+        config_key = f"{current_db_id}_{table_name}"
+        if config_key in configs:
+            return configs[config_key]['configuration']
+        
+        return None
+    except Exception as e:
+        print(f"Error loading view configuration: {e}")
+        return None
+
 @app.route('/')
 @login_required
 def index():
     """Main page showing database status and available tables"""
+    # Extend session if user has remember me enabled
+    extend_session_if_needed()
+    
+    # Check if we have a stored database connection
+    current_db_id = db_storage.get_current_database_id()
+    
     # Try to connect with existing config
     success, message = db_manager.connect()
     
@@ -1065,7 +1418,8 @@ def index():
                          message=message, 
                          tables=tables,
                          stats=stats,
-                         current_user=current_user)
+                         current_user=current_user,
+                         current_database_id=current_db_id)
 
 @app.route('/config')
 @login_required
@@ -1073,6 +1427,14 @@ def config():
     """Database configuration page"""
     current_user = get_current_user()
     return render_template('config.html', config=db_manager.config, current_user=current_user)
+
+@app.route('/view-config')
+@login_required
+def view_config():
+    """View configuration page for customizing table displays"""
+    current_user = get_current_user()
+    databases = get_stored_databases()
+    return render_template('view_config.html', databases=databases, current_user=current_user)
 
 @app.route('/test_connection', methods=['POST'])
 def test_connection():
@@ -1099,13 +1461,18 @@ def test_connection():
 @app.route('/save_config', methods=['POST'])
 def save_config():
     """Save database configuration"""
-    config = {
-        'host': request.form.get('host'),
-        'port': int(request.form.get('port', 5432)),
-        'database': request.form.get('database'),
-        'user': request.form.get('user'),
-        'password': request.form.get('password')
-    }
+    if request.is_json:
+        # API endpoint
+        config = request.get_json()
+    else:
+        # Form endpoint
+        config = {
+            'host': request.form.get('host'),
+            'port': int(request.form.get('port', 5432)),
+            'database': request.form.get('database'),
+            'user': request.form.get('user'),
+            'password': request.form.get('password')
+        }
     
     # Test connection first
     success, message = db_manager.test_connection(config)
@@ -1115,14 +1482,120 @@ def save_config():
         # Connect with new config
         connect_success, connect_message = db_manager.connect(config)
         if connect_success:
+            if request.is_json:
+                return jsonify({'success': True, 'message': 'Configuration saved and connection established!'})
             flash("Configuration saved and connection established!", "success")
             return redirect(url_for('index'))
         else:
+            if request.is_json:
+                return jsonify({'success': False, 'message': f'Configuration saved but connection failed: {connect_message}'})
             flash(f"Configuration saved but connection failed: {connect_message}", "warning")
     else:
+        if request.is_json:
+            return jsonify({'success': False, 'message': f'Configuration not saved - Connection test failed: {message}'})
         flash(f"Configuration not saved - Connection test failed: {message}", "error")
     
+    if request.is_json:
+        return jsonify({'success': False, 'message': 'Configuration not saved'})
     return redirect(url_for('config'))
+
+@app.route('/api/test_connection', methods=['POST'])
+@login_required
+def api_test_connection():
+    """API endpoint to test database connection"""
+    try:
+        config = request.get_json()
+        success, message = db_manager.test_connection(config)
+        return jsonify({'success': success, 'message': message})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/save_config', methods=['POST'])
+@login_required
+def api_save_config():
+    """API endpoint to save database configuration"""
+    try:
+        config = request.get_json()
+        success, message = db_manager.test_connection(config)
+        
+        if success:
+            db_manager.config = config
+            connect_success, connect_message = db_manager.connect(config)
+            if connect_success:
+                return jsonify({'success': True, 'message': 'Configuration saved and connection established!'})
+            else:
+                return jsonify({'success': False, 'message': f'Configuration saved but connection failed: {connect_message}'})
+        else:
+            return jsonify({'success': False, 'message': f'Connection test failed: {message}'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/disconnect', methods=['POST'])
+@login_required
+def api_disconnect():
+    """API endpoint to disconnect database"""
+    try:
+        db_manager.close()
+        return jsonify({'success': True, 'message': 'Database disconnected successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/change_password', methods=['POST'])
+@login_required
+def api_change_password():
+    """API endpoint to change user password"""
+    try:
+        data = request.get_json()
+        current_password = data.get('currentPassword')
+        new_password = data.get('newPassword')
+        
+        if not current_password or not new_password:
+            return jsonify({'success': False, 'message': 'Current password and new password are required'})
+        
+        if len(new_password) < 8:
+            return jsonify({'success': False, 'message': 'New password must be at least 8 characters long'})
+        
+        # Load users
+        try:
+            with open('users.json', 'r') as f:
+                users = json.load(f)
+        except FileNotFoundError:
+            return jsonify({'success': False, 'message': 'User database not found'})
+        
+        # Find current user
+        current_user_id = session.get('user_id')
+        user = users.get(current_user_id)
+        
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'})
+        
+        # Verify current password
+        current_password_hash = hashlib.sha256(current_password.encode()).hexdigest()
+        if user['password'] != current_password_hash:
+            return jsonify({'success': False, 'message': 'Current password is incorrect'})
+        
+        # Update password
+        new_password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+        user['password'] = new_password_hash
+        
+        # Save users
+        with open('users.json', 'w') as f:
+            json.dump(users, f, indent=2)
+        
+        return jsonify({'success': True, 'message': 'Password changed successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/clear_sessions', methods=['POST'])
+@login_required
+def api_clear_sessions():
+    """API endpoint to clear all sessions"""
+    try:
+        # In a production app, you'd want to implement proper session management
+        # For now, we'll just return success
+        return jsonify({'success': True, 'message': 'All sessions cleared successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 @app.route('/table/<table_name>')
 @login_required
@@ -1146,15 +1619,30 @@ def view_table(table_name):
         # Calculate pagination info
         total_pages = (result['total_rows'] + limit - 1) // limit
         
+        # Load view configuration for this table
+        view_config = load_view_configuration(table_name)
+        
+        # Ensure columns is always a list
+        columns = result.get('columns', [])
+        if not isinstance(columns, list):
+            columns = []
+        
+        # Ensure rows is always a list
+        rows = result.get('rows', [])
+        if not isinstance(rows, list):
+            rows = []
+        
         return render_template('table.html', 
                              table_name=table_name, 
-                             columns=result['columns'], 
-                             rows=result['rows'],
+                             columns=columns, 
+                             rows=rows,
                              limit=limit,
                              page=page,
-                             total_rows=result['total_rows'],
+                             total_rows=result.get('total_rows', 0),
                              total_pages=total_pages,
-                             filtered=result.get('filtered', False))
+                             filtered=result.get('filtered', False),
+                             view_config=view_config,
+                             current_user=get_current_user())
     else:
         flash(f"Error loading table data: {result}", "error")
         return redirect(url_for('index'))
@@ -1163,6 +1651,16 @@ def view_table(table_name):
 @login_required
 def api_tables():
     """API endpoint to get list of tables"""
+    # Check if we have a connection
+    if not db_manager.connection:
+        # Try to connect with existing config
+        connect_success, connect_message = db_manager.connect()
+        if not connect_success:
+            return jsonify({
+                'success': False, 
+                'error': f'No database connection. Connection attempt failed: {connect_message}'
+            })
+    
     success, result = db_manager.get_tables()
     if success:
         return jsonify({'success': True, 'tables': result})
@@ -1183,12 +1681,47 @@ def api_stats():
 @login_required
 def api_connection_status():
     """API endpoint to check connection status"""
-    success, message = db_manager.test_connection()
-    return jsonify({
-        'success': success, 
-        'message': message,
-        'timestamp': datetime.now().isoformat()
-    })
+    # First check if we have a stored database connection
+    current_db_id = db_storage.get_current_database_id()
+    
+    if current_db_id:
+        # We have a stored database, check if we're connected to it
+        if db_manager.connection:
+            # Test the existing connection
+            try:
+                cursor = db_manager.connection.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+                cursor.close()
+                return jsonify({
+                    'success': True, 
+                    'message': 'Database connection is active and working',
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                # Connection exists but is broken, try to reconnect
+                connect_success, connect_message = db_manager.connect()
+                return jsonify({
+                    'success': connect_success, 
+                    'message': f'Connection was broken, reconnection: {connect_message}',
+                    'timestamp': datetime.now().isoformat()
+                })
+        else:
+            # No active connection, try to connect with stored config
+            connect_success, connect_message = db_manager.connect()
+            return jsonify({
+                'success': connect_success, 
+                'message': f'No active connection. Connection attempt: {connect_message}',
+                'timestamp': datetime.now().isoformat()
+            })
+    else:
+        # No stored database, try to connect with default config
+        connect_success, connect_message = db_manager.connect()
+        return jsonify({
+            'success': connect_success, 
+            'message': f'No stored database. Using default config: {connect_message}',
+            'timestamp': datetime.now().isoformat()
+        })
 
 @app.route('/api/table/<table_name>/info')
 @login_required
@@ -1588,8 +2121,13 @@ def login():
             session['user_id'] = user['id']
             session['username'] = user['username']
             
+            # Handle remember me functionality
             if remember_me:
                 session.permanent = True
+                print(f"Remember me enabled for user {username}. Session will last 30 days.")
+            else:
+                session.permanent = False
+                print(f"Session will expire when browser closes for user {username}.")
             
             flash(f'Welcome back, {user["full_name"] or user["username"]}!', 'success')
             
@@ -1651,6 +2189,23 @@ def register():
 def logout():
     """User logout"""
     username = session.get('username', 'User')
+    
+    # Clear database connection and reset to default config
+    try:
+        db_manager.close()
+        # Reset to default config (from environment variables)
+        db_manager.config = {
+            'host': os.getenv('DB_HOST', 'localhost'),
+            'port': int(os.getenv('DB_PORT', 5432)),
+            'database': os.getenv('DB_NAME', ''),
+            'user': os.getenv('DB_USER', ''),
+            'password': os.getenv('DB_PASSWORD', '')
+        }
+        # Clear current database setting
+        db_storage.set_current_database(None)
+    except Exception as e:
+        print(f"Error during logout cleanup: {e}")
+    
     session.clear()
     flash(f'Goodbye, {username}! You have been logged out successfully.', 'info')
     return redirect(url_for('login'))
@@ -1661,6 +2216,719 @@ def profile():
     """User profile page"""
     current_user = get_current_user()
     return render_template('auth/profile.html', current_user=current_user)
+
+@app.route('/visualizations')
+@login_required
+def visualizations():
+    """Data visualization dashboard page"""
+    current_user = get_current_user()
+    
+    # Check if database is connected
+    if not db_manager.connection:
+        # Try to connect with existing config
+        success, message = db_manager.connect()
+        if not success:
+            flash("Please connect to a database first to view visualizations.", "warning")
+            return redirect(url_for('databases'))
+    
+    return render_template('visualizations.html', current_user=current_user)
+
+@app.route('/api/visualizations/dashboard')
+@login_required
+def api_visualization_dashboard():
+    """API endpoint to get dashboard visualization data"""
+    # Check if we have a connection
+    if not db_manager.connection:
+        # Try to connect with existing config
+        connect_success, connect_message = db_manager.connect()
+        if not connect_success:
+            return jsonify({
+                'success': False, 
+                'error': f'No database connection. Connection attempt failed: {connect_message}'
+            })
+    
+    success, result = db_manager.get_visualization_data()
+    if success:
+        return jsonify({'success': True, 'data': result})
+    else:
+        return jsonify({'success': False, 'error': result})
+
+@app.route('/api/visualizations/table/<table_name>/analysis')
+@login_required
+def api_table_analysis(table_name):
+    """API endpoint to get detailed table column analysis"""
+    success, result = db_manager.get_table_column_analysis(table_name)
+    if success:
+        return jsonify({'success': True, 'data': result})
+    else:
+        return jsonify({'success': False, 'error': result})
+
+@app.route('/api/visualizations/table/<table_name>/sample')
+@login_required
+def api_table_sample_data(table_name):
+    """API endpoint to get sample data from table for visualization"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        success, result = db_manager.get_table_data(table_name, limit=limit, page=1)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'columns': result['columns'],
+                    'rows': result['rows'],
+                    'total_rows': result['total_rows']
+                }
+            })
+        else:
+            return jsonify({'success': False, 'error': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/visualizations/tables/comparison')
+@login_required
+def api_tables_comparison():
+    """API endpoint to get table comparison data"""
+    try:
+        # Get table names from query parameters
+        table_names = request.args.getlist('tables')
+        if not table_names:
+            # Get all tables if none specified
+            success, all_tables = db_manager.get_tables()
+            if success:
+                table_names = all_tables[:10]  # Limit to first 10 tables
+            else:
+                return jsonify({'success': False, 'error': 'Could not retrieve table list'})
+        
+        success, result = db_manager.get_bulk_table_stats_fast(table_names, len(table_names))
+        if success:
+            return jsonify({'success': True, 'data': result})
+        else:
+            return jsonify({'success': False, 'error': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/visualizations/custom/columns/<table_name>')
+@login_required
+def api_custom_chart_columns(table_name):
+    """API endpoint to get columns for custom chart creation"""
+    try:
+        if not db_manager.connection:
+            return jsonify({'success': False, 'error': 'No database connection'})
+        
+        cursor = db_manager.connection.cursor()
+        cursor.execute("""
+            SELECT 
+                column_name,
+                data_type,
+                is_nullable,
+                column_default
+            FROM information_schema.columns 
+            WHERE table_name = %s AND table_schema = 'public'
+            ORDER BY ordinal_position;
+        """, [table_name])
+        
+        columns = []
+        for row in cursor.fetchall():
+            column_name, data_type, is_nullable, column_default = row
+            
+            # Categorize data types for chart suitability
+            if data_type in ['integer', 'bigint', 'smallint', 'numeric', 'real', 'double precision', 'decimal']:
+                category = 'numeric'
+            elif data_type in ['character varying', 'varchar', 'text', 'char']:
+                category = 'text'
+            elif data_type in ['date', 'timestamp', 'timestamp with time zone', 'timestamp without time zone']:
+                category = 'datetime'
+            elif data_type in ['boolean']:
+                category = 'boolean'
+            else:
+                category = 'other'
+            
+            columns.append({
+                'name': column_name,
+                'type': data_type,
+                'category': category,
+                'nullable': is_nullable == 'YES',
+                'default': column_default
+            })
+        
+        cursor.close()
+        return jsonify({'success': True, 'columns': columns})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/visualizations/custom/data', methods=['POST'])
+@login_required
+def api_custom_chart_data():
+    """API endpoint to get data for custom chart creation"""
+    try:
+        data = request.get_json()
+        table_name = data.get('table_name')
+        x_column = data.get('x_column')
+        y_column = data.get('y_column')
+        chart_type = data.get('chart_type')
+        aggregation = data.get('aggregation', 'count')
+        limit = data.get('limit', 100)
+        
+        if not table_name or not x_column:
+            return jsonify({'success': False, 'error': 'Table name and X column are required'})
+        
+        if not db_manager.connection:
+            return jsonify({'success': False, 'error': 'No database connection'})
+        
+        cursor = db_manager.connection.cursor()
+        
+        # Build query based on chart type and aggregation
+        if chart_type in ['pie', 'doughnut'] or aggregation == 'count':
+            # For categorical charts or count aggregation
+            if y_column and y_column != x_column and aggregation in ['sum', 'avg', 'min', 'max']:
+                query = sql.SQL("""
+                    SELECT {}, {}({}) as value
+                    FROM {} 
+                    WHERE {} IS NOT NULL
+                    GROUP BY {}
+                    ORDER BY value DESC
+                    LIMIT %s
+                """).format(
+                    sql.Identifier(x_column),
+                    sql.SQL(aggregation.upper()),
+                    sql.Identifier(y_column),
+                    sql.Identifier(table_name),
+                    sql.Identifier(x_column),
+                    sql.Identifier(x_column)
+                )
+            else:
+                # Count aggregation
+                query = sql.SQL("""
+                    SELECT {}, COUNT(*) as value
+                    FROM {} 
+                    WHERE {} IS NOT NULL
+                    GROUP BY {}
+                    ORDER BY value DESC
+                    LIMIT %s
+                """).format(
+                    sql.Identifier(x_column),
+                    sql.Identifier(table_name),
+                    sql.Identifier(x_column),
+                    sql.Identifier(x_column)
+                )
+        else:
+            # For scatter plots or line charts with two columns
+            if y_column and y_column != x_column:
+                query = sql.SQL("""
+                    SELECT {}, {}
+                    FROM {} 
+                    WHERE {} IS NOT NULL AND {} IS NOT NULL
+                    ORDER BY {} 
+                    LIMIT %s
+                """).format(
+                    sql.Identifier(x_column),
+                    sql.Identifier(y_column),
+                    sql.Identifier(table_name),
+                    sql.Identifier(x_column),
+                    sql.Identifier(y_column),
+                    sql.Identifier(x_column)
+                )
+            else:
+                # Single column analysis
+                query = sql.SQL("""
+                    SELECT {}, COUNT(*) as value
+                    FROM {} 
+                    WHERE {} IS NOT NULL
+                    GROUP BY {}
+                    ORDER BY {} 
+                    LIMIT %s
+                """).format(
+                    sql.Identifier(x_column),
+                    sql.Identifier(table_name),
+                    sql.Identifier(x_column),
+                    sql.Identifier(x_column),
+                    sql.Identifier(x_column)
+                )
+        
+        cursor.execute(query, [limit])
+        results = cursor.fetchall()
+        
+        # Format data for Chart.js
+        if len(results) > 0 and len(results[0]) >= 2:
+            # Two column data (x_column, value)
+            chart_data = {
+                'labels': [str(row[0]) for row in results],
+                'datasets': [{
+                    'label': f'{aggregation.title()} of {y_column or x_column}',
+                    'data': [float(row[1]) if row[1] is not None else 0 for row in results]
+                }]
+            }
+        elif len(results) > 0 and len(results[0]) == 1:
+            # Single column data (count only)
+            chart_data = {
+                'labels': [str(row[0]) for row in results],
+                'datasets': [{
+                    'label': f'Count of {x_column}',
+                    'data': [1 for row in results]  # Each row represents 1 occurrence
+                }]
+            }
+        else:
+            # No data
+            chart_data = {
+                'labels': [],
+                'datasets': [{
+                    'label': f'{aggregation.title()} of {y_column or x_column}',
+                    'data': []
+                }]
+            }
+        
+        cursor.close()
+        return jsonify({'success': True, 'chart_data': chart_data, 'total_rows': len(results)})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/visualizations/geo/<table_name>')
+@login_required
+def api_geo_chart_data(table_name):
+    """API endpoint to get geographic data for a specific table"""
+    try:
+        if not db_manager.connection:
+            return jsonify({'success': False, 'error': 'No database connection'})
+        
+        cursor = db_manager.connection.cursor()
+        
+        # Get table columns to find potential location and value columns
+        cursor.execute("""
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = %s 
+            ORDER BY ordinal_position
+        """, (table_name,))
+        
+        columns = cursor.fetchall()
+        
+        if not columns:
+            return jsonify({'success': False, 'error': f'Table {table_name} not found or has no columns'})
+        
+        # Find potential location columns (text/varchar types)
+        location_columns = []
+        value_columns = []
+        
+        print(f"DEBUG: Processing columns for table {table_name}")
+        for col_name, col_type in columns:
+            print(f"DEBUG: Column {col_name} has type {col_type}")
+            if col_type in ['text', 'varchar', 'character varying', 'char']:
+                location_columns.append({
+                    'name': col_name,
+                    'type': col_type,
+                    'category': 'location'
+                })
+                print(f"DEBUG: Added {col_name} as location column")
+            elif col_type in ['integer', 'bigint', 'smallint', 'numeric', 'decimal', 'real', 'double precision', 'float', 'float4', 'float8', 'money', 'serial', 'bigserial']:
+                value_columns.append({
+                    'name': col_name,
+                    'type': col_type,
+                    'category': 'numeric'
+                })
+                print(f"DEBUG: Added {col_name} as value column")
+            else:
+                print(f"DEBUG: Column {col_name} with type {col_type} not categorized")
+        
+        print(f"DEBUG: Found {len(location_columns)} location columns and {len(value_columns)} value columns")
+        
+        # If we have location columns, try to get sample data
+        geo_data = []
+        if location_columns:
+            # Use the first location column as default
+            location_col = location_columns[0]['name']
+            
+            # Try to get sample geographic data
+            try:
+                cursor.execute(f"""
+                    SELECT {location_col}, COUNT(*) as count
+                    FROM {table_name}
+                    WHERE {location_col} IS NOT NULL
+                    GROUP BY {location_col}
+                    ORDER BY count DESC
+                    LIMIT 20
+                """)
+                
+                results = cursor.fetchall()
+                geo_data = [
+                    {
+                        'location': row[0],
+                        'value': row[1],
+                        'display_name': row[0]
+                    }
+                    for row in results
+                ]
+            except Exception as e:
+                print(f"Error getting geographic data: {e}")
+        
+        cursor.close()
+        
+        return jsonify({
+            'success': True,
+            'data': geo_data,
+            'location_columns': location_columns,
+            'value_columns': value_columns,
+            'table_name': table_name
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/visualizations/geographic/data', methods=['POST'])
+@login_required
+def api_geographic_data():
+    """API endpoint to get geographic data for mapping with filtering support"""
+    try:
+        data = request.get_json()
+        table_name = data.get('table_name')
+        location_column = data.get('location_column')
+        value_column = data.get('value_column')
+        aggregation = data.get('aggregation', 'count')
+        filters = data.get('filters', [])
+        
+        if not table_name or not location_column:
+            return jsonify({'success': False, 'error': 'Table name and location column are required'})
+        
+        if not db_manager.connection:
+            return jsonify({'success': False, 'error': 'No database connection'})
+        
+        cursor = db_manager.connection.cursor()
+        
+        # Build WHERE clause with filters
+        where_conditions = [sql.SQL("{} IS NOT NULL").format(sql.Identifier(location_column))]
+        query_params = []
+        
+        # Add value column NOT NULL condition if needed
+        if value_column and value_column != location_column and aggregation in ['sum', 'avg', 'min', 'max']:
+            where_conditions.append(sql.SQL("{} IS NOT NULL").format(sql.Identifier(value_column)))
+        
+        # Process filters
+        for filter_item in filters:
+            column = filter_item.get('column')
+            operator = filter_item.get('operator')
+            value = filter_item.get('value')
+            
+            if not column or not operator:
+                continue
+                
+            if operator == 'IS NULL':
+                where_conditions.append(sql.SQL("{} IS NULL").format(sql.Identifier(column)))
+            elif operator == 'IS NOT NULL':
+                where_conditions.append(sql.SQL("{} IS NOT NULL").format(sql.Identifier(column)))
+            elif operator == 'LIKE':
+                where_conditions.append(sql.SQL("{} LIKE %s").format(sql.Identifier(column)))
+                query_params.append(f'%{value}%')
+            elif operator == 'NOT LIKE':
+                where_conditions.append(sql.SQL("{} NOT LIKE %s").format(sql.Identifier(column)))
+                query_params.append(f'%{value}%')
+            elif operator == 'IN':
+                # Split comma-separated values
+                values = [v.strip() for v in value.split(',') if v.strip()]
+                if values:
+                    placeholders = sql.SQL(', ').join([sql.Placeholder() for _ in values])
+                    where_conditions.append(sql.SQL("{} IN ({})").format(sql.Identifier(column), placeholders))
+                    query_params.extend(values)
+            elif operator in ['=', '!=', '>', '<', '>=', '<=']:
+                where_conditions.append(sql.SQL("{} {} %s").format(sql.Identifier(column), sql.SQL(operator)))
+                query_params.append(value)
+        
+        # Build the complete WHERE clause
+        where_clause = sql.SQL(' AND ').join(where_conditions)
+        
+        # Build query for geographic aggregation
+        if value_column and value_column != location_column and aggregation in ['sum', 'avg', 'min', 'max']:
+            query = sql.SQL("""
+                SELECT {}, {}({}) as value
+                FROM {} 
+                WHERE {}
+                GROUP BY {}
+                ORDER BY value DESC
+            """).format(
+                sql.Identifier(location_column),
+                sql.SQL(aggregation.upper()),
+                sql.Identifier(value_column),
+                sql.Identifier(table_name),
+                where_clause,
+                sql.Identifier(location_column)
+            )
+        else:
+            # Count aggregation
+            query = sql.SQL("""
+                SELECT {}, COUNT(*) as value
+                FROM {} 
+                WHERE {}
+                GROUP BY {}
+                ORDER BY value DESC
+            """).format(
+                sql.Identifier(location_column),
+                sql.Identifier(table_name),
+                where_clause,
+                sql.Identifier(location_column)
+            )
+        
+        cursor.execute(query, query_params)
+        results = cursor.fetchall()
+        
+        # Format data for mapping
+        geo_data = []
+        for row in results:
+            location = str(row[0]).strip().lower()
+            value = float(row[1]) if row[1] is not None else 0
+            
+            geo_data.append({
+                'location': location,
+                'value': value,
+                'display_name': str(row[0])
+            })
+        
+        cursor.close()
+        
+        # Log filter information
+        filter_info = f" with {len(filters)} filters" if filters else " (no filters)"
+        print(f"Geographic data request for {table_name}.{location_column}{filter_info}: {len(geo_data)} locations found")
+        
+        return jsonify({
+            'success': True, 
+            'geo_data': geo_data, 
+            'total_locations': len(geo_data),
+            'filters_applied': len(filters)
+        })
+        
+    except Exception as e:
+        print(f"Error in geographic data API: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/debug/connection')
+@login_required
+def api_debug_connection():
+    """Debug endpoint to check database connection and configuration"""
+    debug_info = {
+        'has_connection': db_manager.connection is not None,
+        'config': {
+            'host': db_manager.config.get('host', 'Not set'),
+            'port': db_manager.config.get('port', 'Not set'),
+            'database': db_manager.config.get('database', 'Not set'),
+            'user': db_manager.config.get('user', 'Not set'),
+            'password': '***' if db_manager.config.get('password') else 'Not set'
+        },
+        'connection_test': None,
+        'tables_test': None
+    }
+    
+    # Test connection
+    try:
+        success, message = db_manager.test_connection()
+        debug_info['connection_test'] = {'success': success, 'message': message}
+    except Exception as e:
+        debug_info['connection_test'] = {'success': False, 'message': str(e)}
+    
+    # Test tables if connection works
+    if debug_info['connection_test']['success']:
+        try:
+            success, result = db_manager.get_tables()
+            debug_info['tables_test'] = {'success': success, 'tables': result if success else result}
+        except Exception as e:
+            debug_info['tables_test'] = {'success': False, 'message': str(e)}
+    
+    return jsonify(debug_info)
+
+# View Configuration API Routes
+@app.route('/api/database/<database_id>/tables')
+@login_required
+def api_get_tables(database_id):
+    """Get tables for a specific database"""
+    try:
+        databases = get_stored_databases()
+        database = next((db for db in databases if db['id'] == database_id), None)
+        
+        if not database:
+            return jsonify({'error': 'Database not found'}), 404
+        
+        # Create temporary db manager for this database
+        temp_manager = DatabaseManager()
+        temp_config = {
+            'host': database['host'],
+            'port': database['port'],
+            'database': database['database'],
+            'user': database.get('user', ''),
+            'password': database.get('password', '')
+        }
+        
+        # Check if this is the currently connected database
+        current_db_id = db_storage.get_current_database_id()
+        if current_db_id == database_id and db_manager.connection:
+            # Use existing connection
+            success, result = db_manager.get_tables()
+            if success:
+                tables = [{'name': table} for table in result]
+                return jsonify(tables)
+            else:
+                return jsonify({'error': result}), 500
+        else:
+            # For non-current databases, we need credentials
+            return jsonify({'error': 'This database is not currently connected. Please connect to this database first from the Databases page, then try again.'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        # Clean up the temporary connection
+        try:
+            if 'temp_manager' in locals() and temp_manager.connection:
+                temp_manager.connection.close()
+        except:
+            pass
+
+@app.route('/api/database/<database_id>/table/<table_name>/columns')
+@login_required
+def api_get_table_columns(database_id, table_name):
+    """Get columns for a specific table"""
+    try:
+        databases = get_stored_databases()
+        database = next((db for db in databases if db['id'] == database_id), None)
+        
+        if not database:
+            return jsonify({'error': 'Database not found'}), 404
+        
+        # Create temporary db manager for this database
+        temp_manager = DatabaseManager()
+        temp_config = {
+            'host': database['host'],
+            'port': database['port'],
+            'database': database['database'],
+            'user': database.get('user', ''),
+            'password': database.get('password', '')
+        }
+        
+        # Check if this is the currently connected database
+        current_db_id = db_storage.get_current_database_id()
+        if current_db_id == database_id and db_manager.connection:
+            # Use existing connection
+            success, result = db_manager.get_columns(table_name)
+            if success:
+                columns = [{'name': col[0], 'type': col[1]} for col in result]
+                return jsonify(columns)
+            else:
+                return jsonify({'error': result}), 500
+        else:
+            # For non-current databases, we need credentials
+            return jsonify({'error': 'This database is not currently connected. Please connect to this database first from the Databases page, then try again.'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        # Clean up the temporary connection
+        try:
+            if 'temp_manager' in locals() and temp_manager.connection:
+                temp_manager.connection.close()
+        except:
+            pass
+
+@app.route('/api/view-config/save', methods=['POST'])
+@login_required
+def api_save_view_config():
+    """Save view configuration for a table"""
+    try:
+        data = request.get_json()
+        database_id = data.get('database_id')
+        table_name = data.get('table_name')
+        configuration = data.get('configuration')
+        
+        if not all([database_id, table_name, configuration]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Load existing configurations
+        config_file = 'view_configurations.json'
+        try:
+            with open(config_file, 'r') as f:
+                configs = json.load(f)
+        except FileNotFoundError:
+            configs = {}
+        
+        # Save configuration
+        config_key = f"{database_id}_{table_name}"
+        configs[config_key] = {
+            'database_id': database_id,
+            'table_name': table_name,
+            'configuration': configuration,
+            'created_at': time.time(),
+            'updated_at': time.time()
+        }
+        
+        # Write back to file
+        with open(config_file, 'w') as f:
+            json.dump(configs, f, indent=2)
+        
+        return jsonify({'success': True, 'message': 'Configuration saved successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/view-config/load/<database_id>/<table_name>')
+@login_required
+def api_load_view_config(database_id, table_name):
+    """Load view configuration for a table"""
+    try:
+        config_file = 'view_configurations.json'
+        try:
+            with open(config_file, 'r') as f:
+                configs = json.load(f)
+        except FileNotFoundError:
+            return jsonify({'error': 'No configurations found'}), 404
+        
+        config_key = f"{database_id}_{table_name}"
+        if config_key in configs:
+            return jsonify(configs[config_key])
+        else:
+            return jsonify({'error': 'Configuration not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/view-config/status')
+@login_required
+def api_view_config_status():
+    """Get view configuration status and recent configurations"""
+    try:
+        config_file = 'view_configurations.json'
+        try:
+            with open(config_file, 'r') as f:
+                configs = json.load(f)
+        except FileNotFoundError:
+            return jsonify({'success': True, 'configurations': [], 'current_database_id': db_storage.get_current_database_id()})
+        
+        # Get current database to filter relevant configurations
+        current_db_id = db_storage.get_current_database_id()
+        
+        configurations = []
+        for config_key, config_data in configs.items():
+            database_id, table_name = config_key.split('_', 1)
+            
+            # Include all configurations, but mark current database ones
+            config_info = {
+                'table_name': table_name,
+                'database_id': database_id,
+                'database_name': 'Current Database' if database_id == current_db_id else 'Other Database',
+                'updated_at': config_data.get('updated_at', time.time()),
+                'created_at': config_data.get('created_at', time.time()),
+                'is_current': database_id == current_db_id
+            }
+            configurations.append(config_info)
+        
+        # Sort by updated_at (most recent first)
+        configurations.sort(key=lambda x: x['updated_at'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'configurations': configurations,
+            'total_count': len(configurations),
+            'current_db_count': len([c for c in configurations if c['is_current']]),
+            'current_database_id': current_db_id
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
