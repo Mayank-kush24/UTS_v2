@@ -45,7 +45,7 @@
                         <button class="btn user-menu-toggle" onclick="toggleUserPanel()" id="userMenuToggle" type="button">
                             <div class="user-menu-wrapper">
                                 <i class="fas fa-user-circle user-menu-icon"></i>
-                                <span class="user-menu-text">{{ session.username }}</span>
+                                <span class="user-menu-text">{{ (session.full_name if session.full_name else current_user.full_name if current_user and current_user.full_name else session.username if session.username else 'User') }}</span>
                                 <i class="fas fa-chevron-right panel-caret"></i>
                             </div>
                         </button>
@@ -83,8 +83,8 @@
                     <i class="fas fa-user-circle"></i>
                 </div>
                 <div class="user-details">
-                    <div class="user-name">{{ session.username }}</div>
-                    <div class="user-role">Administrator</div>
+                    <div class="user-name">{{ (session.full_name if session.full_name else current_user.full_name if current_user and current_user.full_name else session.username if session.username else 'User') }}</div>
+                    <div class="user-role">{{ (current_user.role if current_user else 'user') | title }}</div>
                     <div class="user-status">
                         <span class="status-indicator online"></span>
                         Online

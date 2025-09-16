@@ -66,6 +66,16 @@
                 <i class="fas fa-shield-alt me-2"></i>Security
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
+                <i class="fas fa-users me-2"></i>User Management
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="cache-tab" data-bs-toggle="tab" data-bs-target="#cache" type="button" role="tab">
+                <i class="fas fa-memory me-2"></i>Cache Management
+            </button>
+        </li>
     </ul>
 
     <!-- Tab Content -->
@@ -450,6 +460,49 @@
                                 </div>
                             </div>
 
+                            <!-- Display Settings -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-cog me-2"></i>Display Settings
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-8">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="form-check form-switch me-3">
+                                                            <input class="form-check-input" type="checkbox" id="showTotalCountToggle" 
+                                                                   onchange="toggleRowCountDisplay()" checked>
+                                                            <label class="form-check-label" for="showTotalCountToggle">
+                                                                <strong>Show Total Records Count</strong>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <p class="text-muted mb-0 mt-2">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        When enabled, displays "(25 of 3251861 rows)". When disabled, shows only "(25 rows)".
+                                                    </p>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="text-end">
+                                                        <div class="badge bg-success" id="countToggleStatus">
+                                                            <i class="fas fa-eye me-1"></i>Enabled
+                                                        </div>
+                                                        <br><br>
+                                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="testToggle()">
+                                                            Test Toggle
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Quick Status -->
                             <div class="row mt-4">
                                 <div class="col-md-6">
@@ -726,6 +779,212 @@
                 </div>
             </div>
         </div>
+        
+        <!-- User Management -->
+        <div class="tab-pane fade" id="users" role="tabpanel" aria-labelledby="users-tab">
+            <div class="row">
+                <!-- User Creation -->
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user-plus me-2"></i>Create New User
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="createUserForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="userFullName" class="form-label">
+                                                <i class="fas fa-user me-1"></i>Full Name
+                                            </label>
+                                            <input type="text" class="form-control" id="userFullName" name="full_name" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="userUsername" class="form-label">
+                                                <i class="fas fa-at me-1"></i>Username
+                                            </label>
+                                            <input type="text" class="form-control" id="userUsername" name="username" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="userEmail" class="form-label">
+                                                <i class="fas fa-envelope me-1"></i>Email Address
+                                            </label>
+                                            <input type="email" class="form-control" id="userEmail" name="email" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="userPhone" class="form-label">
+                                                <i class="fas fa-phone me-1"></i>Phone Number
+                                            </label>
+                                            <input type="tel" class="form-control" id="userPhone" name="phone">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="userPosition" class="form-label">
+                                                <i class="fas fa-briefcase me-1"></i>Position/Role
+                                            </label>
+                                            <input type="text" class="form-control" id="userPosition" name="position">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="userRole" class="form-label">
+                                                <i class="fas fa-shield me-1"></i>Access Level
+                                            </label>
+                                            <select class="form-control" id="userRole" name="role" required>
+                                                <option value="">Select Access Level</option>
+                                                <option value="admin">Administrator</option>
+                                                <option value="user">Standard User</option>
+                                                <option value="viewer">Viewer Only</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Password Field (Editable with Auto-Generate) -->
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-key me-1"></i>User Password
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="generatedPassword" 
+                                               placeholder="Enter custom password or click Generate">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="generatePassword()" 
+                                                title="Generate secure password">
+                                            <i class="fas fa-sync-alt"></i> Generate
+                                        </button>
+                                        <button class="btn btn-outline-success" type="button" onclick="togglePasswordVisibility()" 
+                                                title="Toggle password visibility" id="passwordToggleBtn">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-info" type="button" onclick="copyPassword()" 
+                                                title="Copy password to clipboard">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Password Strength Indicator -->
+                                    <div class="mt-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">Password strength:</small>
+                                            <small class="text-muted" id="passwordStrengthText">Enter a password</small>
+                                        </div>
+                                        <div class="progress" style="height: 4px;">
+                                            <div class="progress-bar" id="passwordStrengthBar" role="progressbar" 
+                                                 style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Type your own password or click "Generate" for a secure auto-generated one
+                                    </small>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-user-plus me-2"></i>Create User
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User List -->
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users me-2"></i>Existing Users
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="input-group" style="max-width: 300px;">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="userSearch" placeholder="Search users...">
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="refreshUserList()">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            </div>
+                            
+                            <div id="userList">
+                                <!-- Users will be loaded here -->
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="sr-only">Loading...</span>
+                                    </div>
+                                    <p class="text-muted mt-2">Loading users...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User Actions and Bulk Operations -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cogs me-2"></i>User Management Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="fw-semibold mb-3">Bulk Operations</h6>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-warning" onclick="resetAllPasswords()">
+                                            <i class="fas fa-key me-2"></i>Reset All Passwords
+                                        </button>
+                                        <button class="btn btn-outline-info" onclick="exportUsers()">
+                                            <i class="fas fa-download me-2"></i>Export User List
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="fw-semibold mb-3">System Stats</h6>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-primary mb-0" id="totalUsers">0</h4>
+                                                <small class="text-muted">Total Users</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="text-center">
+                                                <h4 class="text-success mb-0" id="activeUsers">0</h4>
+                                                <small class="text-muted">Active Users</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -737,16 +996,219 @@ let settings = {
     database: {},
     visualization: {},
     user: {},
+    tableViews: {
+        showTotalCount: true
+    },
     system: {},
     security: {}
 };
+
+// Ensure settings object is always properly initialized
+function initializeSettings() {
+    if (!settings) {
+        settings = {};
+    }
+    if (!settings.tableViews) {
+        settings.tableViews = {};
+    }
+    if (settings.tableViews.showTotalCount === undefined) {
+        settings.tableViews.showTotalCount = true;
+    }
+    console.log('Settings initialized:', settings);
+}
+
+// Toggle Row Count Display
+function toggleRowCountDisplay() {
+    console.log('=== toggleRowCountDisplay called ===');
+    
+    // Ensure settings is initialized
+    initializeSettings();
+    
+    // Get elements
+    const toggle = document.getElementById('showTotalCountToggle');
+    const status = document.getElementById('countToggleStatus');
+    
+    console.log('Toggle element found:', !!toggle);
+    console.log('Status element found:', !!status);
+    console.log('Settings object:', settings);
+    console.log('Settings.tableViews:', settings.tableViews);
+    
+    if (!toggle) {
+        console.error('Toggle element not found!');
+        alert('Toggle element not found!');
+        return;
+    }
+    
+    if (!status) {
+        console.error('Status element not found!');
+        alert('Status element not found!');
+        return;
+    }
+    
+    console.log('Toggle checked state:', toggle.checked);
+    
+    // Update settings
+    settings.tableViews.showTotalCount = toggle.checked;
+    
+    // Update status badge
+    if (toggle.checked) {
+        status.className = 'badge bg-success';
+        status.innerHTML = '<i class="fas fa-eye me-1"></i>Enabled';
+        console.log('Status updated to: Enabled');
+    } else {
+        status.className = 'badge bg-secondary';
+        status.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Disabled';
+        console.log('Status updated to: Disabled');
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('showTotalCount', toggle.checked.toString());
+    console.log('Saved to localStorage:', toggle.checked);
+    
+    // Show alert for testing
+    alert(`Toggle changed to: ${toggle.checked ? 'Enabled' : 'Disabled'}`);
+    
+    // Notify other pages of the change
+    try {
+        window.dispatchEvent(new CustomEvent('rowCountSettingChanged', {
+            detail: { showTotalCount: toggle.checked }
+        }));
+        console.log('Custom event dispatched');
+    } catch (e) {
+        console.error('Error dispatching custom event:', e);
+    }
+    
+    console.log('=== toggleRowCountDisplay completed ===');
+}
+
+// Test Toggle Function
+function testToggle() {
+    console.log('=== testToggle called ===');
+    const toggle = document.getElementById('showTotalCountToggle');
+    
+    if (toggle) {
+        console.log('Current toggle state:', toggle.checked);
+        toggle.checked = !toggle.checked;
+        console.log('New toggle state:', toggle.checked);
+        toggleRowCountDisplay();
+    } else {
+        console.error('Toggle element not found for test!');
+        alert('Toggle element not found!');
+    }
+}
+
+// Show Settings Status
+function showSettingsStatus(message, type = 'success') {
+    // Simple alert for now - can be enhanced with toast notifications later
+    console.log(`${type.toUpperCase()}: ${message}`);
+    
+    // Update the status indicator if it exists
+    const statusCard = document.getElementById('settingsStatus');
+    if (statusCard) {
+        statusCard.classList.remove('d-none');
+        statusCard.querySelector('small').textContent = message;
+        
+        // Hide after 3 seconds
+        setTimeout(() => {
+            statusCard.classList.add('d-none');
+        }, 3000);
+    }
+}
+
+// Load Toggle State
+function loadToggleState() {
+    console.log('=== loadToggleState called ===');
+    
+    // Ensure settings is initialized
+    initializeSettings();
+    
+    // Wait a bit for DOM to be ready
+    setTimeout(() => {
+        const toggle = document.getElementById('showTotalCountToggle');
+        const status = document.getElementById('countToggleStatus');
+        
+        console.log('Toggle element found:', !!toggle);
+        console.log('Status element found:', !!status);
+        
+        if (!toggle) {
+            console.error('Toggle element not found in loadToggleState!');
+            return;
+        }
+        
+        if (!status) {
+            console.error('Status element not found in loadToggleState!');
+            return;
+        }
+        
+        const savedState = localStorage.getItem('showTotalCount');
+        console.log('Saved state from localStorage:', savedState);
+        
+        if (savedState !== null) {
+            toggle.checked = savedState === 'true';
+            settings.tableViews.showTotalCount = toggle.checked;
+            console.log('Set toggle checked to:', toggle.checked);
+        } else {
+            console.log('No saved state, using default (checked)');
+            toggle.checked = true;
+            settings.tableViews.showTotalCount = true;
+        }
+        
+        // Update status badge
+        if (toggle.checked) {
+            status.className = 'badge bg-success';
+            status.innerHTML = '<i class="fas fa-eye me-1"></i>Enabled';
+        } else {
+            status.className = 'badge bg-secondary';
+            status.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Disabled';
+        }
+        console.log('Status badge updated');
+        console.log('=== loadToggleState completed ===');
+    }, 100);
+}
 
 // Initialize settings on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Settings page loaded successfully');
     
+    // Initialize settings object first
+    initializeSettings();
+    
     // Initialize tab functionality
     initializeTabs();
+    
+    // Load toggle state
+    loadToggleState();
+    
+    // Add multiple event listeners for toggle
+    setTimeout(() => {
+        const toggle = document.getElementById('showTotalCountToggle');
+        if (toggle) {
+            console.log('Adding event listeners to toggle');
+            
+            // Change event
+            toggle.addEventListener('change', function() {
+                console.log('Toggle change event fired');
+                toggleRowCountDisplay();
+            });
+            
+            // Click event
+            toggle.addEventListener('click', function() {
+                console.log('Toggle click event fired');
+                setTimeout(() => {
+                    toggleRowCountDisplay();
+                }, 10);
+            });
+            
+            // Input event
+            toggle.addEventListener('input', function() {
+                console.log('Toggle input event fired');
+                toggleRowCountDisplay();
+            });
+            
+        } else {
+            console.error('Toggle element not found for event listener');
+        }
+    }, 200);
     
     loadSettings();
     checkConnectionStatus();
@@ -1714,11 +2176,1554 @@ function getCurrentDatabaseId() {
     return currentDatabaseId || 'unknown';
 }
 
+// User Management Functions
+function generatePassword() {
+    const length = 12;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let password = "";
+    
+    // Ensure at least one of each type
+    password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)]; // Uppercase
+    password += "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]; // Lowercase
+    password += "0123456789"[Math.floor(Math.random() * 10)]; // Number
+    password += "!@#$%^&*"[Math.floor(Math.random() * 8)]; // Special
+    
+    // Fill the rest
+    for (let i = 4; i < length; i++) {
+        password += charset[Math.floor(Math.random() * charset.length)];
+    }
+    
+    // Shuffle the password
+    password = password.split('').sort(() => 0.5 - Math.random()).join('');
+    
+    document.getElementById('generatedPassword').value = password;
+    
+    // Check strength of generated password
+    checkPasswordStrength(password);
+}
+
+function copyPassword() {
+    const passwordField = document.getElementById('generatedPassword');
+    if (!passwordField.value) {
+        showToast('Please enter or generate a password first', 'warning');
+        return;
+    }
+    
+    passwordField.select();
+    passwordField.setSelectionRange(0, 99999); // For mobile devices
+    
+    try {
+        document.execCommand('copy');
+        showToast('Password copied to clipboard!', 'success');
+    } catch (err) {
+        console.error('Failed to copy password:', err);
+        showToast('Failed to copy password', 'error');
+    }
+}
+
+function togglePasswordVisibility() {
+    const passwordField = document.getElementById('generatedPassword');
+    const toggleBtn = document.getElementById('passwordToggleBtn');
+    const icon = toggleBtn.querySelector('i');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+        toggleBtn.title = 'Hide password';
+    } else {
+        passwordField.type = 'password';
+        icon.className = 'fas fa-eye';
+        toggleBtn.title = 'Show password';
+    }
+}
+
+function checkPasswordStrength(password) {
+    const strengthBar = document.getElementById('passwordStrengthBar');
+    const strengthText = document.getElementById('passwordStrengthText');
+    
+    if (!password) {
+        strengthBar.style.width = '0%';
+        strengthBar.className = 'progress-bar';
+        strengthText.textContent = 'Enter a password';
+        return;
+    }
+    
+    let score = 0;
+    let feedback = '';
+    
+    // Length check
+    if (password.length >= 8) score += 25;
+    if (password.length >= 12) score += 10;
+    
+    // Character variety checks
+    if (/[a-z]/.test(password)) score += 15;
+    if (/[A-Z]/.test(password)) score += 15;
+    if (/[0-9]/.test(password)) score += 15;
+    if (/[^A-Za-z0-9]/.test(password)) score += 20;
+    
+    // Set strength level and styling
+    if (score < 30) {
+        strengthBar.className = 'progress-bar bg-danger';
+        strengthBar.style.width = '25%';
+        feedback = 'Weak';
+    } else if (score < 60) {
+        strengthBar.className = 'progress-bar bg-warning';
+        strengthBar.style.width = '50%';
+        feedback = 'Fair';
+    } else if (score < 80) {
+        strengthBar.className = 'progress-bar bg-info';
+        strengthBar.style.width = '75%';
+        feedback = 'Good';
+    } else {
+        strengthBar.className = 'progress-bar bg-success';
+        strengthBar.style.width = '100%';
+        feedback = 'Strong';
+    }
+    
+    strengthText.textContent = feedback;
+}
+
+function createUser() {
+    console.log('createUser function called');
+    
+    const form = document.getElementById('createUserForm');
+    if (!form) {
+        console.error('Form not found');
+        showToast('Form not found', 'error');
+        return false;
+    }
+    
+    const formData = new FormData(form);
+    const password = document.getElementById('generatedPassword').value;
+    
+    console.log('Password value:', password);
+    
+    if (!password) {
+        showToast('Please enter a password or click Generate', 'warning');
+        return false;
+    }
+    
+    if (password.length < 6) {
+        showToast('Password must be at least 6 characters long', 'warning');
+        return false;
+    }
+    
+    const userData = {
+        full_name: formData.get('full_name'),
+        username: formData.get('username'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        position: formData.get('position'),
+        role: formData.get('role'),
+        password: password
+    };
+    
+    console.log('User data collected:', userData);
+    
+    // Validate required fields
+    if (!userData.full_name || !userData.username || !userData.email || !userData.role) {
+        showToast('Please fill in all required fields (Name, Username, Email, Role)', 'warning');
+        return false;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userData.email)) {
+        showToast('Please enter a valid email address', 'warning');
+        return false;
+    }
+    
+    console.log('Sending user creation request...');
+    
+    fetch('/api/users/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        console.log('API response:', result);
+        if (result.success) {
+            showToast('User created successfully!', 'success');
+            form.reset();
+            document.getElementById('generatedPassword').value = '';
+            checkPasswordStrength(''); // Reset password strength indicator
+            refreshUserList();
+        } else {
+            showToast('Failed to create user: ' + result.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error creating user:', error);
+        showToast('Error creating user: ' + error.message, 'error');
+    });
+    
+    return false;
+}
+
+function showToast(message, type = 'info') {
+    // Remove any existing toasts
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast-notification alert alert-${type === 'error' ? 'danger' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show`;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+    
+    toast.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+            <div class="flex-grow-1">${message}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (toast && toast.parentNode) {
+            toast.remove();
+        }
+    }, 5000);
+}
+
+function refreshUserList() {
+    const userList = document.getElementById('userList');
+    userList.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p class="text-muted mt-2">Loading users...</p>
+        </div>
+    `;
+    
+    fetch('/api/users/list')
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                displayUserList(result.users);
+                updateUserStats(result.users);
+            } else {
+                userList.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Failed to load users: ${result.error}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading users:', error);
+            userList.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error loading users: ${error.message}
+                </div>
+            `;
+        });
+}
+
+function displayUserList(users) {
+    const userList = document.getElementById('userList');
+    
+    // Store users globally for modal access
+    window.currentUsers = users;
+    
+    if (users.length === 0) {
+        userList.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No users found. Create your first user to get started.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    users.forEach(user => {
+        const roleColor = {
+            'admin': 'danger',
+            'user': 'primary',
+            'viewer': 'secondary'
+        };
+        
+        html += `
+            <div class="user-item border rounded p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="user-avatar me-3">
+                                <i class="fas fa-user-circle fa-2x text-primary"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">${user.full_name}</h6>
+                                <small class="text-muted">@${user.username}</small>
+                            </div>
+                        </div>
+                        <div class="user-details">
+                            <p class="mb-1">
+                                <i class="fas fa-envelope me-1 text-muted"></i>
+                                <small>${user.email}</small>
+                            </p>
+                            ${user.phone ? `
+                                <p class="mb-1">
+                                    <i class="fas fa-phone me-1 text-muted"></i>
+                                    <small>${user.phone}</small>
+                                </p>
+                            ` : ''}
+                            ${user.position ? `
+                                <p class="mb-1">
+                                    <i class="fas fa-briefcase me-1 text-muted"></i>
+                                    <small>${user.position}</small>
+                                </p>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        <span class="badge bg-${roleColor[user.role] || 'secondary'} mb-2">${user.role}</span>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="editUser('${user.id}')">
+                                    <i class="fas fa-edit me-1"></i>Edit
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="resetUserPassword('${user.id}')">
+                                    <i class="fas fa-key me-1"></i>Reset Password
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteUser('${user.id}')">
+                                    <i class="fas fa-trash me-1"></i>Delete
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    userList.innerHTML = html;
+    
+    // Fix dropdown positioning for user items
+    setTimeout(() => {
+        const userDropdowns = document.querySelectorAll('.user-item .dropdown');
+        userDropdowns.forEach(dropdown => {
+            const button = dropdown.querySelector('.dropdown-toggle');
+            const menu = dropdown.querySelector('.dropdown-menu');
+            
+            if (button && menu) {
+                // Ensure proper z-index stacking
+                dropdown.style.position = 'relative';
+                dropdown.style.zIndex = '1000';
+                
+                // Add event listeners for dropdown show/hide
+                button.addEventListener('click', function(e) {
+                    const container = document.getElementById('userList');
+                    
+                    // Close any other open dropdowns
+                    userDropdowns.forEach(otherDropdown => {
+                        if (otherDropdown !== dropdown) {
+                            const otherMenu = otherDropdown.querySelector('.dropdown-menu');
+                            if (otherMenu) {
+                                otherMenu.classList.remove('show');
+                            }
+                        }
+                    });
+                    
+                    // Remove dropdown-open class first
+                    container.classList.remove('dropdown-open');
+                    
+                    setTimeout(() => {
+                        if (menu.classList.contains('show')) {
+                            // Add dropdown-open class for CSS fallback
+                            container.classList.add('dropdown-open');
+                            
+                            // Get button position and container dimensions
+                            const buttonRect = button.getBoundingClientRect();
+                            const containerRect = container.getBoundingClientRect();
+                            const menuHeight = menu.offsetHeight || 150; // Estimated menu height
+                            
+                            // Check if dropdown would be clipped at bottom
+                            const spaceBelow = containerRect.bottom - buttonRect.bottom;
+                            const spaceAbove = buttonRect.top - containerRect.top;
+                            
+                            menu.style.position = 'absolute';
+                            menu.style.zIndex = '99999';
+                            menu.style.right = '0';
+                            menu.style.left = 'auto';
+                            menu.style.transform = 'none';
+                            dropdown.style.zIndex = '1002';
+                            
+                            // Position dropdown above if not enough space below
+                            if (spaceBelow < menuHeight && spaceAbove > menuHeight) {
+                                menu.style.top = 'auto';
+                                menu.style.bottom = '100%';
+                                menu.style.marginBottom = '0.125rem';
+                                menu.style.marginTop = '0';
+                            } else {
+                                menu.style.top = '100%';
+                                menu.style.bottom = 'auto';
+                                menu.style.marginTop = '0.125rem';
+                                menu.style.marginBottom = '0';
+                            }
+                        } else {
+                            // Remove dropdown-open class when menu is hidden
+                            container.classList.remove('dropdown-open');
+                        }
+                    }, 1);
+                });
+                
+                // Also listen for Bootstrap dropdown events
+                dropdown.addEventListener('hidden.bs.dropdown', function() {
+                    const container = document.getElementById('userList');
+                    container.classList.remove('dropdown-open');
+                });
+            }
+        });
+    }, 100);
+}
+
+function updateUserStats(users) {
+    document.getElementById('totalUsers').textContent = users.length;
+    document.getElementById('activeUsers').textContent = users.filter(u => u.active !== false).length;
+}
+
+// Global variable to store current user being edited
+let currentEditUserId = null;
+
+function editUser(userId) {
+    currentEditUserId = userId;
+    
+    // Fetch user details
+    fetch(`/api/users/${userId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                const user = result.user;
+                
+                // Populate form fields
+                document.getElementById('editUserId').value = user.id;
+                document.getElementById('editFullName').value = user.full_name || '';
+                document.getElementById('editUsername').value = user.username || '';
+                document.getElementById('editEmail').value = user.email || '';
+                document.getElementById('editPhone').value = user.phone || '';
+                document.getElementById('editPosition').value = user.position || '';
+                document.getElementById('editRole').value = user.role || 'user';
+                document.getElementById('editIsActive').checked = user.is_active !== false;
+                document.getElementById('editPassword').value = ''; // Clear password field
+                
+                // Update user info display
+                document.getElementById('editUserName').textContent = user.full_name || user.username;
+                const createdDate = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown';
+                document.getElementById('editUserCreated').textContent = `Created: ${createdDate}`;
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+                modal.show();
+            } else {
+                showToast('Failed to load user details: ' + result.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading user details:', error);
+            showToast('Error loading user details', 'error');
+        });
+}
+
+function toggleEditPasswordVisibility() {
+    const passwordField = document.getElementById('editPassword');
+    const toggleBtn = document.getElementById('editPasswordToggleBtn');
+    const icon = toggleBtn.querySelector('i');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+        toggleBtn.title = 'Hide password';
+    } else {
+        passwordField.type = 'password';
+        icon.className = 'fas fa-eye';
+        toggleBtn.title = 'Show password';
+    }
+}
+
+function generateEditPassword() {
+    const length = 12;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let password = "";
+    
+    for (let i = 0; i < length; i++) {
+        password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    
+    document.getElementById('editPassword').value = password;
+    document.getElementById('editPassword').type = 'text'; // Show generated password
+    
+    // Update toggle button
+    const toggleBtn = document.getElementById('editPasswordToggleBtn');
+    const icon = toggleBtn.querySelector('i');
+    icon.className = 'fas fa-eye-slash';
+    toggleBtn.title = 'Hide password';
+    
+    showToast('Password generated successfully!', 'success');
+}
+
+// Global variable to store current user being reset
+let currentResetUserId = null;
+
+function resetUserPassword(userId) {
+    // Find user information
+    const users = window.currentUsers || [];
+    const user = users.find(u => u.id === userId);
+    const userName = user ? user.full_name || user.username : 'Unknown User';
+    
+    // Store user ID and update modal
+    currentResetUserId = userId;
+    document.getElementById('resetUserName').textContent = userName;
+    
+    // Reset modal form
+    document.getElementById('generatePassword').checked = true;
+    document.getElementById('customPassword').checked = false;
+    document.getElementById('customPasswordSection').classList.add('d-none');
+    document.getElementById('modalNewPassword').value = '';
+    document.getElementById('modalConfirmPassword').value = '';
+    document.getElementById('modalPasswordMatch').textContent = '';
+    document.getElementById('passwordStrength').style.width = '0%';
+    document.getElementById('strengthText').textContent = 'Enter a password to see strength';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('passwordResetModal'));
+    
+    // Initialize listeners before showing modal
+    initializePasswordResetModalListeners();
+    
+    // Show modal
+    modal.show();
+}
+
+function initializePasswordResetModalListeners() {
+    console.log('Initializing password reset modal listeners');
+    
+    const generateRadio = document.getElementById('generatePassword');
+    const customRadio = document.getElementById('customPassword');
+    const customSection = document.getElementById('customPasswordSection');
+    const newPasswordInput = document.getElementById('modalNewPassword');
+    const confirmPasswordInput = document.getElementById('modalConfirmPassword');
+    const togglePasswordBtn = document.getElementById('toggleModalPassword');
+    const confirmBtn = document.getElementById('confirmPasswordReset');
+    
+    // Check if all elements exist
+    if (!generateRadio || !customRadio || !customSection || !newPasswordInput || !confirmPasswordInput || !togglePasswordBtn || !confirmBtn) {
+        console.error('Password reset modal elements not found');
+        return;
+    }
+    
+    // Handle reset option changes
+    function updatePasswordSection() {
+        console.log('Radio button changed. Custom selected:', customRadio.checked);
+        if (customRadio.checked) {
+            customSection.classList.remove('d-none');
+            console.log('Showing custom password section');
+            setTimeout(() => {
+                newPasswordInput.focus();
+            }, 100);
+        } else {
+            customSection.classList.add('d-none');
+            console.log('Hiding custom password section');
+        }
+    }
+    
+    generateRadio.addEventListener('change', function() {
+        console.log('Generate radio changed:', this.checked);
+        updatePasswordSection();
+    });
+    
+    customRadio.addEventListener('change', function() {
+        console.log('Custom radio changed:', this.checked);
+        updatePasswordSection();
+    });
+    
+    // Password visibility toggle
+    togglePasswordBtn.addEventListener('click', function() {
+        const type = newPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        newPasswordInput.setAttribute('type', type);
+        confirmPasswordInput.setAttribute('type', type);
+        
+        const icon = this.querySelector('i');
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    });
+    
+    // Password strength checker
+    function checkPasswordStrength(password) {
+        console.log('Checking password strength for:', password);
+        let strength = 0;
+        let feedback = '';
+        
+        if (password.length >= 8) strength += 25;
+        if (/[a-z]/.test(password)) strength += 25;
+        if (/[A-Z]/.test(password)) strength += 25;
+        if (/[0-9]/.test(password)) strength += 25;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 10;
+        
+        const progressBar = document.getElementById('passwordStrength');
+        const strengthText = document.getElementById('strengthText');
+        
+        if (progressBar && strengthText) {
+            progressBar.style.width = Math.min(strength, 100) + '%';
+            progressBar.className = 'progress-bar';
+            
+            if (strength < 50) {
+                progressBar.classList.add('bg-danger');
+                feedback = 'Weak password';
+            } else if (strength < 75) {
+                progressBar.classList.add('bg-warning');
+                feedback = 'Moderate password';
+            } else if (strength < 100) {
+                progressBar.classList.add('bg-info');
+                feedback = 'Strong password';
+            } else {
+                progressBar.classList.add('bg-success');
+                feedback = 'Very strong password';
+            }
+            
+            strengthText.textContent = feedback;
+            console.log('Password strength updated:', feedback);
+        } else {
+            console.error('Password strength elements not found');
+        }
+    }
+    
+    // Password confirmation checker
+    function checkPasswordMatch() {
+        const password = newPasswordInput.value;
+        const confirm = confirmPasswordInput.value;
+        const matchDiv = document.getElementById('modalPasswordMatch');
+        
+        if (confirm === '') {
+            matchDiv.textContent = '';
+            return;
+        }
+        
+        if (password === confirm) {
+            matchDiv.textContent = '✓ Passwords match';
+            matchDiv.className = 'form-text text-success';
+        } else {
+            matchDiv.textContent = '✗ Passwords do not match';
+            matchDiv.className = 'form-text text-danger';
+        }
+    }
+    
+    newPasswordInput.addEventListener('input', function() {
+        console.log('Password input event triggered, value:', this.value);
+        checkPasswordStrength(this.value);
+        checkPasswordMatch();
+    });
+    
+    confirmPasswordInput.addEventListener('input', function() {
+        console.log('Confirm password input event triggered, value:', this.value);
+        checkPasswordMatch();
+    });
+    
+    // Handle password reset confirmation
+    confirmBtn.addEventListener('click', function() {
+        const isCustom = customRadio.checked;
+        let requestData = {};
+        
+        if (isCustom) {
+            const password = newPasswordInput.value;
+            const confirm = confirmPasswordInput.value;
+            
+            // Validate custom password
+            if (!password) {
+                showToast('Please enter a password', 'error');
+                return;
+            }
+            
+            if (password !== confirm) {
+                showToast('Passwords do not match', 'error');
+                return;
+            }
+            
+            if (password.length < 8) {
+                showToast('Password must be at least 8 characters long', 'error');
+                return;
+            }
+            
+            // Check complexity
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasDigit = /[0-9]/.test(password);
+            
+            if (!hasUpper || !hasLower || !hasDigit) {
+                showToast('Password must contain uppercase, lowercase, and numeric characters', 'error');
+                return;
+            }
+            
+            requestData.password = password;
+        }
+        
+        // Disable button and show loading
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Resetting...';
+        
+        // Make API request
+        fetch(`/api/users/${currentResetUserId}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showToast(result.message, 'success');
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('passwordResetModal'));
+                modal.hide();
+            } else {
+                showToast('Failed to reset password: ' + result.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error resetting password:', error);
+            showToast('Error resetting password: ' + error.message, 'error');
+        })
+        .finally(() => {
+            // Re-enable button
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-key me-1"></i>Reset Password';
+        });
+    });
+    
+    console.log('Password reset modal listeners initialized successfully');
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Other initialization code can go here
+});
+
+function deleteUser(userId) {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        fetch(`/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showToast('User deleted successfully!', 'success');
+                refreshUserList();
+            } else {
+                showToast('Failed to delete user: ' + result.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting user:', error);
+            showToast('Error deleting user: ' + error.message, 'error');
+        });
+    }
+}
+
+function resetAllPasswords() {
+    if (confirm('Are you sure you want to reset ALL user passwords? This will affect all users except administrators.')) {
+        showToast('Bulk password reset functionality coming soon!', 'info');
+    }
+}
+
+function exportUsers() {
+    fetch('/api/users/export')
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'users-export.csv';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            showToast('User list exported successfully!', 'success');
+        })
+        .catch(error => {
+            console.error('Error exporting users:', error);
+            showToast('Error exporting users: ' + error.message, 'error');
+        });
+}
+
 // Add to existing DOMContentLoaded event listener
 document.addEventListener('DOMContentLoaded', function() {
     // ... existing initialization code ...
     loadViewConfigurationStatus();
     loadTablesForLayout();
+    
+    // Initialize user management
+    const createUserForm = document.getElementById('createUserForm');
+    if (createUserForm) {
+        createUserForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('Form submit event triggered');
+            createUser();
+        });
+        console.log('Create user form event listener attached');
+    } else {
+        console.error('Create user form not found during initialization');
+    }
+    
+    // Add real-time password strength checking
+    const passwordField = document.getElementById('generatedPassword');
+    if (passwordField) {
+        passwordField.addEventListener('input', function() {
+            checkPasswordStrength(this.value);
+        });
+        console.log('Password field event listener attached');
+    } else {
+        console.error('Password field not found during initialization');
+    }
+    
+    // Don't auto-generate password - let user choose to type or generate
+    
+    // Load users when tab is clicked
+    document.getElementById('users-tab').addEventListener('click', function() {
+        setTimeout(() => {
+            refreshUserList();
+        }, 100);
+    });
+    
+    // User search functionality
+    document.getElementById('userSearch').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const userItems = document.querySelectorAll('.user-item');
+        
+        userItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+    
+    // Handle edit user confirmation
+    document.getElementById('confirmEditUser').addEventListener('click', function() {
+        const form = document.getElementById('editUserForm');
+        const formData = new FormData(form);
+        
+        // Validate required fields
+        const fullName = document.getElementById('editFullName').value.trim();
+        const username = document.getElementById('editUsername').value.trim();
+        const email = document.getElementById('editEmail').value.trim();
+        const role = document.getElementById('editRole').value;
+        
+        if (!fullName || !username || !email || !role) {
+            showToast('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showToast('Please enter a valid email address', 'error');
+            return;
+        }
+        
+        // Prepare update data
+        const updateData = {
+            full_name: fullName,
+            username: username,
+            email: email,
+            phone: document.getElementById('editPhone').value.trim(),
+            position: document.getElementById('editPosition').value.trim(),
+            role: role,
+            is_active: document.getElementById('editIsActive').checked
+        };
+        
+        // Add password if provided
+        const password = document.getElementById('editPassword').value.trim();
+        if (password) {
+            if (password.length < 6) {
+                showToast('Password must be at least 6 characters long', 'error');
+                return;
+            }
+            updateData.password = password;
+        }
+        
+        // Show loading state
+        const confirmBtn = document.getElementById('confirmEditUser');
+        const originalText = confirmBtn.innerHTML;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+        confirmBtn.disabled = true;
+        
+        // Send update request
+        fetch(`/api/users/${currentEditUserId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(updateData)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showToast('User updated successfully!', 'success');
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+                modal.hide();
+                
+                // Refresh user list
+                refreshUserList();
+            } else {
+                showToast('Failed to update user: ' + result.error, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating user:', error);
+            showToast('Error updating user', 'error');
+        })
+        .finally(() => {
+            // Restore button state
+            confirmBtn.innerHTML = originalText;
+            confirmBtn.disabled = false;
+        });
+    });
 });
+
+// =====================================
+//   CACHE MANAGEMENT FUNCTIONS
+// =====================================
+
+// Load cache statistics
+async function loadCacheStats() {
+    try {
+        const container = document.getElementById('cacheStatsContainer');
+        container.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading cache statistics...</span>
+                </div>
+                <p class="mt-2 text-muted">Loading cache statistics...</p>
+            </div>
+        `;
+        
+        const response = await fetch('/api/cache/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            displayCacheStats(data.cache_stats);
+            updatePerformanceCards(data.cache_stats);
+        } else {
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Failed to load cache statistics: ${data.error}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading cache stats:', error);
+        document.getElementById('cacheStatsContainer').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error loading cache statistics: ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Display cache statistics
+function displayCacheStats(stats) {
+    const container = document.getElementById('cacheStatsContainer');
+    
+    let statsHtml = '<div class="row g-3">';
+    
+    Object.entries(stats).forEach(([cacheName, cacheStats]) => {
+        const hitRate = (cacheStats.hit_rate * 100).toFixed(1);
+        const utilizationRate = (cacheStats.current_size / cacheStats.max_size * 100).toFixed(1);
+        
+        statsHtml += `
+            <div class="col-md-6">
+                <div class="cache-stat-card p-3 border rounded">
+                    <h6 class="fw-bold text-capitalize">${cacheName.replace(/_/g, ' ')}</h6>
+                    <div class="d-flex justify-content-between mb-2">
+                        <small class="text-muted">Hit Rate:</small>
+                        <span class="badge bg-${hitRate > 80 ? 'success' : hitRate > 50 ? 'warning' : 'danger'}">${hitRate}%</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <small class="text-muted">Size:</small>
+                        <span>${cacheStats.current_size}/${cacheStats.max_size}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <small class="text-muted">Requests:</small>
+                        <span>${cacheStats.total_requests}</span>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-${utilizationRate > 90 ? 'danger' : utilizationRate > 70 ? 'warning' : 'success'}" 
+                             style="width: ${utilizationRate}%"></div>
+                    </div>
+                    <small class="text-muted">${utilizationRate}% utilized</small>
+                </div>
+            </div>
+        `;
+    });
+    
+    statsHtml += '</div>';
+    container.innerHTML = statsHtml;
+}
+
+// Update performance cards
+function updatePerformanceCards(stats) {
+    const container = document.getElementById('cachePerformanceCards');
+    
+    // Calculate overall statistics
+    let totalRequests = 0;
+    let totalHits = 0;
+    let totalSize = 0;
+    let totalCapacity = 0;
+    
+    Object.values(stats).forEach(stat => {
+        totalRequests += stat.total_requests;
+        totalHits += stat.hits;
+        totalSize += stat.current_size;
+        totalCapacity += stat.max_size;
+    });
+    
+    const overallHitRate = totalRequests > 0 ? (totalHits / totalRequests * 100).toFixed(1) : 0;
+    const memoryUsage = totalCapacity > 0 ? (totalSize / totalCapacity * 100).toFixed(1) : 0;
+    
+    container.innerHTML = `
+        <div class="col-md-3">
+            <div class="card border-0 bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-percentage fa-2x mb-2"></i>
+                    <h4 class="mb-0">${overallHitRate}%</h4>
+                    <small>Overall Hit Rate</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-success text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-database fa-2x mb-2"></i>
+                    <h4 class="mb-0">${totalRequests}</h4>
+                    <small>Total Requests</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-memory fa-2x mb-2"></i>
+                    <h4 class="mb-0">${memoryUsage}%</h4>
+                    <small>Memory Usage</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-warning text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-layer-group fa-2x mb-2"></i>
+                    <h4 class="mb-0">${Object.keys(stats).length}</h4>
+                    <small>Active Caches</small>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Clear cache
+async function clearCache() {
+    try {
+        const cacheType = document.getElementById('cacheTypeSelect').value;
+        const cacheName = cacheType || 'all caches';
+        
+        if (!confirm(`Are you sure you want to clear ${cacheName}? This cannot be undone.`)) {
+            return;
+        }
+        
+        const response = await fetch('/api/cache/clear', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cache_name: cacheType || null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            loadCacheStats(); // Refresh stats
+        } else {
+            showToast('Failed to clear cache: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error clearing cache:', error);
+        showToast('Error clearing cache: ' + error.message, 'error');
+    }
+}
+
+// Invalidate cache by pattern
+async function invalidateCachePattern() {
+    try {
+        const cacheName = document.getElementById('invalidateCacheSelect').value;
+        const pattern = document.getElementById('cachePatternInput').value;
+        
+        if (!pattern) {
+            showToast('Please enter a pattern to match cache keys', 'warning');
+            return;
+        }
+        
+        const response = await fetch('/api/cache/invalidate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cache_name: cacheName,
+                pattern: pattern
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            loadCacheStats(); // Refresh stats
+            document.getElementById('cachePatternInput').value = ''; // Clear input
+        } else {
+            showToast('Failed to invalidate cache: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error invalidating cache:', error);
+        showToast('Error invalidating cache: ' + error.message, 'error');
+    }
+}
+
+// Cleanup expired cache entries
+async function cleanupExpiredCache() {
+    try {
+        const response = await fetch('/api/cache/cleanup', {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            loadCacheStats(); // Refresh stats
+        } else {
+            showToast('Failed to cleanup cache: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error cleaning up cache:', error);
+        showToast('Error cleaning up cache: ' + error.message, 'error');
+    }
+}
+
+// Load cache stats when cache tab is shown
+document.addEventListener('DOMContentLoaded', function() {
+    const cacheTab = document.getElementById('cache-tab');
+    if (cacheTab) {
+        cacheTab.addEventListener('shown.bs.tab', function() {
+            loadCacheStats();
+        });
+    }
+});
+
 </script>
+
+<!-- Password Reset Modal -->
+<div class="modal fade" id="passwordResetModal" tabindex="-1" aria-labelledby="passwordResetModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="passwordResetModalLabel">
+                    <i class="fas fa-key me-2"></i>Reset User Password
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <p class="text-muted mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Choose how you want to reset the password for this user.
+                    </p>
+                </div>
+                
+                <!-- Reset Options -->
+                <div class="mb-4">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="resetOption" id="generatePassword" value="generate" checked>
+                        <label class="form-check-label" for="generatePassword">
+                            <strong>Generate Random Password</strong>
+                            <small class="d-block text-muted">System will create a secure 12-character password</small>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="resetOption" id="customPassword" value="custom">
+                        <label class="form-check-label" for="customPassword">
+                            <strong>Set Custom Password</strong>
+                            <small class="d-block text-muted">Enter a specific password for this user</small>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Custom Password Input (hidden by default) -->
+                <div id="customPasswordSection" class="d-none">
+                    <div class="mb-3">
+                        <label for="modalNewPassword" class="form-label">New Password</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="modalNewPassword" placeholder="Enter new password">
+                            <button class="btn btn-outline-secondary" type="button" id="toggleModalPassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div id="modalPasswordHelp" class="form-text">
+                            Password must be at least 8 characters long and contain uppercase, lowercase, and numeric characters.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="modalConfirmPassword" class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="modalConfirmPassword" placeholder="Confirm new password">
+                        <div id="modalPasswordMatch" class="form-text"></div>
+                    </div>
+                    
+                    <!-- Password Strength Indicator -->
+                    <div class="mb-3">
+                        <label class="form-label small">Password Strength</label>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar" id="passwordStrength" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted" id="strengthText">Enter a password to see strength</small>
+                    </div>
+                </div>
+
+                <!-- User Info -->
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user me-2"></i>
+                        <div>
+                            <strong>Resetting password for:</strong>
+                            <span id="resetUserName">User Name</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmPasswordReset">
+                    <i class="fas fa-key me-1"></i>Reset Password
+                </button>
+            </div>
+        </div>
+        
+        <!-- Cache Management -->
+        <div class="tab-pane fade" id="cache" role="tabpanel" aria-labelledby="cache-tab">
+            <div class="row">
+                <!-- Cache Statistics -->
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-pie me-2"></i>Cache Statistics
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="cache-stats-container" id="cacheStatsContainer">
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading cache statistics...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Loading cache statistics...</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-3">
+                                <button class="btn btn-primary btn-sm" onclick="loadCacheStats()">
+                                    <i class="fas fa-refresh me-1"></i>Refresh Stats
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="cleanupExpiredCache()">
+                                    <i class="fas fa-broom me-1"></i>Cleanup Expired
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cache Management Actions -->
+                <div class="col-lg-6">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-tools me-2"></i>Cache Management
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Clear Cache Section -->
+                            <div class="mb-4">
+                                <h6 class="fw-bold">
+                                    <i class="fas fa-trash me-1"></i>Clear Cache
+                                </h6>
+                                <div class="row g-2">
+                                    <div class="col-md-8">
+                                        <select class="form-select" id="cacheTypeSelect">
+                                            <option value="">All Caches</option>
+                                            <option value="database_queries">Database Queries</option>
+                                            <option value="api_responses">API Responses</option>
+                                            <option value="table_metadata">Table Metadata</option>
+                                            <option value="user_data">User Data</option>
+                                            <option value="configuration">Configuration</option>
+                                            <option value="static_assets">Static Assets</option>
+                                            <option value="visualization_data">Visualization Data</option>
+                                            <option value="file_uploads">File Uploads</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button class="btn btn-danger w-100" onclick="clearCache()">
+                                            <i class="fas fa-trash me-1"></i>Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Cache Invalidation Section -->
+                            <div class="mb-4">
+                                <h6 class="fw-bold">
+                                    <i class="fas fa-search me-1"></i>Invalidate by Pattern
+                                </h6>
+                                <div class="row g-2">
+                                    <div class="col-md-5">
+                                        <select class="form-select" id="invalidateCacheSelect">
+                                            <option value="database_queries">Database Queries</option>
+                                            <option value="api_responses">API Responses</option>
+                                            <option value="table_metadata">Table Metadata</option>
+                                            <option value="user_data">User Data</option>
+                                            <option value="configuration">Configuration</option>
+                                            <option value="static_assets">Static Assets</option>
+                                            <option value="visualization_data">Visualization Data</option>
+                                            <option value="file_uploads">File Uploads</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <input type="text" class="form-control" id="cachePatternInput" 
+                                               placeholder="e.g., table_.*" title="Regular expression pattern">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn btn-warning w-100" onclick="invalidateCachePattern()">
+                                            <i class="fas fa-eraser me-1"></i>Go
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted">Use regex patterns to match cache keys</small>
+                            </div>
+                            
+                            <!-- Cache Settings -->
+                            <div>
+                                <h6 class="fw-bold">
+                                    <i class="fas fa-cog me-1"></i>Cache Settings
+                                </h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Auto-cleanup interval (minutes)</label>
+                                        <input type="number" class="form-control" id="cacheCleanupInterval" 
+                                               value="30" min="5" max="120">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Max cache size per type</label>
+                                        <input type="number" class="form-control" id="maxCacheSize" 
+                                               value="1000" min="100" max="10000">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cache Performance Monitoring -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card settings-card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-tachometer-alt me-2"></i>Performance Monitoring
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row" id="cachePerformanceCards">
+                                <!-- Performance cards will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">
+                    <i class="fas fa-user-edit me-2"></i>Edit User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId" name="user_id">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editFullName" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Full Name
+                                </label>
+                                <input type="text" class="form-control" id="editFullName" name="full_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editUsername" class="form-label">
+                                    <i class="fas fa-at me-1"></i>Username
+                                </label>
+                                <input type="text" class="form-control" id="editUsername" name="username" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editEmail" class="form-label">
+                                    <i class="fas fa-envelope me-1"></i>Email Address
+                                </label>
+                                <input type="email" class="form-control" id="editEmail" name="email" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPhone" class="form-label">
+                                    <i class="fas fa-phone me-1"></i>Phone Number
+                                </label>
+                                <input type="tel" class="form-control" id="editPhone" name="phone">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPosition" class="form-label">
+                                    <i class="fas fa-briefcase me-1"></i>Position/Role
+                                </label>
+                                <input type="text" class="form-control" id="editPosition" name="position">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editRole" class="form-label">
+                                    <i class="fas fa-shield me-1"></i>Access Level
+                                </label>
+                                <select class="form-control" id="editRole" name="role" required>
+                                    <option value="">Select Access Level</option>
+                                    <option value="admin">Administrator</option>
+                                    <option value="user">Standard User</option>
+                                    <option value="viewer">Viewer Only</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Toggle -->
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="editIsActive" name="is_active" checked>
+                            <label class="form-check-label" for="editIsActive">
+                                <i class="fas fa-toggle-on me-1"></i>User is Active
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Password Section -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-key me-1"></i>Password (Optional)
+                        </label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="editPassword" name="password" 
+                                   placeholder="Leave blank to keep current password">
+                            <button class="btn btn-outline-secondary" type="button" onclick="toggleEditPasswordVisibility()" 
+                                    title="Toggle password visibility" id="editPasswordToggleBtn">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-info" type="button" onclick="generateEditPassword()" 
+                                    title="Generate secure password">
+                                <i class="fas fa-sync-alt"></i> Generate
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Leave password field empty to keep the current password unchanged.
+                        </div>
+                    </div>
+                    
+                    <!-- User Info Display -->
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <div>
+                                <strong>Editing user:</strong>
+                                <span id="editUserName">User Name</span>
+                                <small class="d-block text-muted" id="editUserCreated">Created: -</small>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmEditUser">
+                    <i class="fas fa-save me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

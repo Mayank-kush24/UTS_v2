@@ -287,15 +287,61 @@
                                 </select>
                             </div>
                             <div class="col-md-9 d-flex align-items-end">
+                                <button class="btn btn-outline-secondary me-2" id="toggleCustomFiltersBtn" onclick="toggleCustomFilters()" disabled>
+                                    <i class="fas fa-filter me-1"></i> Filters
+                                    <span id="customFilterCountBadge" class="badge bg-primary ms-1 d-none">0</span>
+                                </button>
                                 <button class="btn btn-primary" id="createCustomChartBtn" onclick="createCustomChart()" disabled>
                                     <i class="fas fa-chart-bar"></i> Create Chart
                                 </button>
                             </div>
                         </div>
                         
+                        <!-- Custom Chart Filters Panel -->
+                        <div class="card mb-3" id="customFiltersPanel" style="display: none;">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 d-flex align-items-center">
+                                    <i class="fas fa-filter me-2"></i>
+                                    <span>Chart Data Filters</span>
+                                    <small class="badge bg-info ms-2">Advanced</small>
+                                </h6>
+                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearCustomFilters()" id="clearCustomFiltersBtn" disabled>
+                                    <i class="fas fa-trash me-1"></i>Clear All
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <!-- Filter Builder for Custom Charts -->
+                                <div id="customFilterBuilder">
+                                    <!-- Main Logic Selection -->
+                                    <div class="row mb-4">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-success">
+                                                <i class="fas fa-sitemap me-1"></i>Filter Logic
+                                            </label>
+                                            <select class="form-select" id="customMainLogic">
+                                                <option value="AND">AND (All conditions must match)</option>
+                                                <option value="OR">OR (Any condition can match)</option>
+                                            </select>
+                                            <small class="text-muted">How to combine multiple filter groups</small>
+                                        </div>
+                                        <div class="col-md-6 d-flex align-items-end">
+                                            <button type="button" class="btn btn-success btn-sm" onclick="addCustomFilterGroup()">
+                                                <i class="fas fa-plus me-1"></i>Add Filter Group
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Filter Groups Container -->
+                                    <div id="customFilterGroups">
+                                        <!-- Filter groups will be dynamically added here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div id="customChartContainer" style="display: none;">
                             <h6 id="customChartTitle" class="text-center mb-3"></h6>
-                            <div class="chart-area">
+                            <div class="chart-area" style="height: 400px; position: relative;">
                                 <canvas id="customChart"></canvas>
                             </div>
                         </div>
@@ -1715,6 +1761,9 @@ async function loadTableColumns() {
     } catch (error) {
         showError('Error loading table columns: ' + error.message);
     }
+    
+    // Enable filter button when table is selected
+    enableCustomFiltersButton();
 }
 
 async function createCustomChart() {
@@ -1749,7 +1798,8 @@ async function createCustomChart() {
                 y_column: yColumn,
                 chart_type: chartType,
                 aggregation: aggregation,
-                limit: 50
+                limit: 50,
+                filters: customFilters
             })
         });
         
@@ -1757,8 +1807,16 @@ async function createCustomChart() {
         console.log('API response:', result);
         
         if (result.success) {
-            console.log('Chart data received:', result.chart_data);
-            displayCustomChart(result.chart_data, chartType, tableName, xColumn, yColumn, aggregation);
+            console.log('Chart data received:', result.data);
+            const chartData = transformChartData(result.data, xColumn, yColumn, aggregation);
+            displayCustomChart(chartData, chartType, tableName, xColumn, yColumn, aggregation);
+            
+            // Additional resize after chart creation to ensure proper dimensions
+            setTimeout(() => {
+                if (customChart) {
+                    customChart.resize();
+                }
+            }, 200);
         } else {
             console.error('API error:', result.error);
             showError('Failed to create custom chart: ' + result.error);
@@ -1766,6 +1824,34 @@ async function createCustomChart() {
     } catch (error) {
         showError('Error creating custom chart: ' + error.message);
     }
+}
+
+function transformChartData(data, xColumn, yColumn, aggregation) {
+    console.log('Transforming chart data:', data);
+    
+    if (!data || !Array.isArray(data)) {
+        console.error('Invalid data format for chart transformation');
+        return {
+            labels: [],
+            datasets: [{
+                label: 'No Data',
+                data: []
+            }]
+        };
+    }
+    
+    const labels = data.map(item => item.x);
+    const values = data.map(item => item.y);
+    
+    const yLabel = yColumn ? `${aggregation} of ${yColumn}` : `${aggregation} of ${xColumn}`;
+    
+    return {
+        labels: labels,
+        datasets: [{
+            label: yLabel,
+            data: values
+        }]
+    };
 }
 
 function displayCustomChart(chartData, chartType, tableName, xColumn, yColumn, aggregation) {
@@ -1777,6 +1863,13 @@ function displayCustomChart(chartData, chartType, tableName, xColumn, yColumn, a
         yColumn,
         aggregation
     });
+    
+    // Validate chart data
+    if (!chartData || !chartData.labels || !chartData.datasets) {
+        console.error('Invalid chart data format:', chartData);
+        showError('Invalid chart data format received from server');
+        return;
+    }
     
     const canvas = document.getElementById('customChart');
     const container = document.getElementById('customChartContainer');
@@ -1852,6 +1945,13 @@ function displayCustomChart(chartData, chartType, tableName, xColumn, yColumn, a
     
     customChart = new Chart(ctx, chartConfig);
     container.style.display = 'block';
+    
+    // Force chart resize after display
+    setTimeout(() => {
+        if (customChart) {
+            customChart.resize();
+        }
+    }, 100);
 }
 
 // Geographic Mapping Functions
@@ -1974,6 +2074,13 @@ function displayGeoVisualization(geoData, tableName, locationColumn, valueColumn
     const container = document.getElementById('geoVisualizationContainer');
     const title = document.getElementById('geoChartTitle');
     
+    console.log('Canvas elements found:', {
+        geoCanvas: !!geoCanvas,
+        distributionCanvas: !!distributionCanvas,
+        container: !!container,
+        title: !!title
+    });
+    
     if (!geoCanvas || !distributionCanvas || !container || !title) {
         console.error('Required elements for geographic visualization not found:', {
             geoCanvas: !!geoCanvas,
@@ -2006,6 +2113,9 @@ function displayGeoVisualization(geoData, tableName, locationColumn, valueColumn
     // Take top 20 locations for readability
     const topLocations = geoData.slice(0, 20);
     
+    console.log('Processed geoData:', geoData);
+    console.log('Top locations:', topLocations);
+    
     // Set title
     const valueLabel = valueColumn ? `${aggregation} of ${valueColumn}` : `${aggregation}`;
     title.textContent = `Geographic Distribution: ${valueLabel} by ${locationColumn}`;
@@ -2014,7 +2124,7 @@ function displayGeoVisualization(geoData, tableName, locationColumn, valueColumn
     const mainChartConfig = {
         type: 'bar',
         data: {
-            labels: topLocations.map(item => item.display_name),
+            labels: topLocations.map(item => item.location),
             datasets: [{
                 label: valueLabel,
                 data: topLocations.map(item => item.value),
@@ -2077,8 +2187,19 @@ function displayGeoVisualization(geoData, tableName, locationColumn, valueColumn
         }
     };
     
-    geoChart = new Chart(ctx, mainChartConfig);
-    geoDistributionChart = new Chart(distributionCtx, distributionConfig);
+    try {
+        geoChart = new Chart(ctx, mainChartConfig);
+        console.log('Main geographic chart created successfully');
+    } catch (error) {
+        console.error('Error creating main geographic chart:', error);
+    }
+    
+    try {
+        geoDistributionChart = new Chart(distributionCtx, distributionConfig);
+        console.log('Distribution chart created successfully');
+    } catch (error) {
+        console.error('Error creating distribution chart:', error);
+    }
     
     // Update statistics safely
     const updateGeoStat = (id, value) => {
@@ -2089,7 +2210,7 @@ function displayGeoVisualization(geoData, tableName, locationColumn, valueColumn
     };
     
     updateGeoStat('totalLocations', geoData.length.toLocaleString());
-    updateGeoStat('topLocation', geoData[0]?.display_name || 'N/A');
+    updateGeoStat('topLocation', geoData[0]?.location || 'N/A');
     updateGeoStat('totalValue', geoData.reduce((sum, item) => sum + item.value, 0).toLocaleString());
     
     container.style.display = 'block';
@@ -2355,6 +2476,15 @@ async function createGeoChart() {
         return;
     }
     
+    // Show loading state
+    const createBtn = document.getElementById('createGeoBtn');
+    if (createBtn) {
+        createBtn.disabled = true;
+        createBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Chart...';
+    }
+    
+    console.log('Sending geo chart request with filters:', geoFilters);
+    
     try {
         const response = await fetch('/api/visualizations/geographic/data', {
             method: 'POST',
@@ -2375,6 +2505,11 @@ async function createGeoChart() {
         
         if (result.success) {
             console.log('Geo data received:', result.geo_data);
+            // Show the geographic visualization container
+            const container = document.getElementById('geoVisualizationContainer');
+            if (container) {
+                container.style.display = 'block';
+            }
             displayGeoVisualization(result.geo_data, tableName, locationColumn, valueColumn, aggregation);
         } else {
             console.error('Geo chart API error:', result.error);
@@ -2382,6 +2517,13 @@ async function createGeoChart() {
         }
     } catch (error) {
         showError('Error creating geographic chart: ' + error.message);
+    } finally {
+        // Reset button state
+        const createBtn = document.getElementById('createGeoBtn');
+        if (createBtn) {
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<i class="fas fa-globe"></i> Create Geographic Chart';
+        }
     }
 }
 
@@ -2395,7 +2537,7 @@ function downloadCustomChart() {
 }
 
 // Geographic Filter Management
-let geoFilters = [];
+let geoFilters = { logic: 'AND', groups: [] };
 
 function toggleGeoFilters() {
     const filterSection = document.getElementById('geoFilterSection');
@@ -2430,7 +2572,11 @@ function addGeoFilter() {
     }
     
     // Check if filter already exists
-    const existingFilter = geoFilters.find(f => f.column === column && f.operator === operator && f.value === value);
+    const existingFilter = geoFilters.groups.find(group => 
+        group.conditions && group.conditions.some(condition => 
+            condition.column === column && condition.operator === operator && condition.value === value
+        )
+    );
     if (existingFilter) {
         alert('This filter already exists');
         return;
@@ -2443,7 +2589,16 @@ function addGeoFilter() {
         value: value
     };
     
-    geoFilters.push(filter);
+    // Add to the first group, or create a new group if none exists
+    if (geoFilters.groups.length === 0) {
+        geoFilters.groups.push({
+            logic: 'AND',
+            conditions: [filter]
+        });
+    } else {
+        geoFilters.groups[0].conditions.push(filter);
+    }
+    
     updateActiveGeoFilters();
     
     // Clear the input fields
@@ -2452,16 +2607,28 @@ function addGeoFilter() {
     
     console.log('Added geo filter:', filter);
     console.log('Current geo filters:', geoFilters);
+    console.log('Total geo filters count:', geoFilters.groups.reduce((total, group) => total + (group.conditions ? group.conditions.length : 0), 0));
 }
 
 function removeGeoFilter(filterId) {
-    geoFilters = geoFilters.filter(f => f.id !== filterId);
+    // Find and remove the filter from all groups
+    geoFilters.groups.forEach(group => {
+        if (group.conditions) {
+            group.conditions = group.conditions.filter(f => f.id !== filterId);
+        }
+    });
+    
+    // Remove empty groups
+    geoFilters.groups = geoFilters.groups.filter(group => 
+        group.conditions && group.conditions.length > 0
+    );
+    
     updateActiveGeoFilters();
     console.log('Removed geo filter, remaining:', geoFilters);
 }
 
 function clearGeoFilters() {
-    geoFilters = [];
+    geoFilters = { logic: 'AND', groups: [] };
     updateActiveGeoFilters();
     console.log('Cleared all geo filters');
 }
@@ -2469,27 +2636,33 @@ function clearGeoFilters() {
 function updateActiveGeoFilters() {
     const container = document.getElementById('activeGeoFilters');
     
-    if (geoFilters.length === 0) {
+    const totalFilters = geoFilters.groups.reduce((total, group) => total + (group.conditions ? group.conditions.length : 0), 0);
+    
+    if (totalFilters === 0) {
         container.innerHTML = '<p class="text-muted mb-0"><i class="fas fa-info-circle"></i> No active filters</p>';
         return;
     }
     
     let html = '<div class="d-flex flex-wrap gap-2">';
-    geoFilters.forEach(filter => {
-        const displayValue = ['IS NULL', 'IS NOT NULL'].includes(filter.operator) ? '' : `: ${filter.value}`;
-        const operatorText = filter.operator === 'LIKE' ? 'contains' : 
-                           filter.operator === 'NOT LIKE' ? 'does not contain' : 
-                           filter.operator;
-        
-        html += `
-            <span class="badge bg-info d-flex align-items-center">
-                <strong>${filter.column}</strong> ${operatorText} ${displayValue}
-                <button type="button" class="btn-close btn-close-white ms-2" 
-                        onclick="removeGeoFilter(${filter.id})" 
-                        style="font-size: 0.7em; padding: 0; width: 12px; height: 12px;">
-                </button>
-            </span>
-        `;
+    geoFilters.groups.forEach(group => {
+        if (group.conditions) {
+            group.conditions.forEach(filter => {
+                const displayValue = ['IS NULL', 'IS NOT NULL'].includes(filter.operator) ? '' : `: ${filter.value}`;
+                const operatorText = filter.operator === 'LIKE' ? 'contains' : 
+                                   filter.operator === 'NOT LIKE' ? 'does not contain' : 
+                                   filter.operator;
+                
+                html += `
+                    <span class="badge bg-info d-flex align-items-center">
+                        <strong>${filter.column}</strong> ${operatorText} ${displayValue}
+                        <button type="button" class="btn-close btn-close-white ms-2" 
+                                onclick="removeGeoFilter(${filter.id})" 
+                                style="font-size: 0.7em; padding: 0; width: 12px; height: 12px;">
+                        </button>
+                    </span>
+                `;
+            });
+        }
     });
     html += '</div>';
     
@@ -2564,6 +2737,370 @@ function loadGeoColumns() {
 function showError(message) {
     console.log('showError called with:', message);
     displayErrorSafely(message);
+}
+
+// Custom Chart Filter Variables and Functions
+let customFilters = { logic: 'AND', groups: [] };
+let customFilterGroupCounter = 0;
+let customConditionCounter = 0;
+let customTableColumns = [];
+
+// Filter operations configuration for custom charts
+const customFilterOperations = {
+    'text': [
+        { value: 'contains', label: 'Contains' },
+        { value: 'not_contains', label: 'Does not contain' },
+        { value: 'equals', label: 'Equals' },
+        { value: 'not_equals', label: 'Does not equal' },
+        { value: 'starts_with', label: 'Starts with' },
+        { value: 'ends_with', label: 'Ends with' },
+        { value: 'is_null', label: 'Is NULL' },
+        { value: 'is_not_null', label: 'Is not NULL' },
+        { value: 'in', label: 'In (comma separated)' },
+        { value: 'not_in', label: 'Not in (comma separated)' }
+    ],
+    'number': [
+        { value: 'equals', label: 'Equals' },
+        { value: 'not_equals', label: 'Does not equal' },
+        { value: 'greater_than', label: 'Greater than' },
+        { value: 'less_than', label: 'Less than' },
+        { value: 'greater_equal', label: 'Greater than or equal' },
+        { value: 'less_equal', label: 'Less than or equal' },
+        { value: 'between', label: 'Between' },
+        { value: 'is_null', label: 'Is NULL' },
+        { value: 'is_not_null', label: 'Is not NULL' }
+    ],
+    'date': [
+        { value: 'equals', label: 'Equals' },
+        { value: 'not_equals', label: 'Does not equal' },
+        { value: 'greater_than', label: 'After' },
+        { value: 'less_than', label: 'Before' },
+        { value: 'greater_equal', label: 'On or after' },
+        { value: 'less_equal', label: 'On or before' },
+        { value: 'between', label: 'Between' },
+        { value: 'is_null', label: 'Is NULL' },
+        { value: 'is_not_null', label: 'Is not NULL' }
+    ],
+    'boolean': [
+        { value: 'equals', label: 'Equals' },
+        { value: 'is_null', label: 'Is NULL' },
+        { value: 'is_not_null', label: 'Is not NULL' }
+    ]
+};
+
+// Toggle custom filters panel
+function toggleCustomFilters() {
+    const panel = document.getElementById('customFiltersPanel');
+    const isVisible = panel.style.display !== 'none';
+    
+    if (isVisible) {
+        panel.style.display = 'none';
+    } else {
+        panel.style.display = 'block';
+        // Load columns when opening filter panel
+        loadCustomFilterColumns();
+    }
+    
+    // Resize chart after panel toggle to prevent height issues
+    setTimeout(() => {
+        if (customChart) {
+            customChart.resize();
+        }
+    }, 300);
+}
+
+// Load columns for filter dropdowns
+async function loadCustomFilterColumns() {
+    const tableName = document.getElementById('customTableSelect').value;
+    if (!tableName) {
+        customTableColumns = [];
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/visualizations/custom/columns/${tableName}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            customTableColumns = result.columns;
+        } else {
+            console.error('Failed to load columns for filters:', result.error);
+            customTableColumns = [];
+        }
+    } catch (error) {
+        console.error('Error loading columns for filters:', error);
+        customTableColumns = [];
+    }
+}
+
+// Add filter group
+function addCustomFilterGroup() {
+    if (customTableColumns.length === 0) {
+        showError('Please select a table first');
+        return;
+    }
+    
+    const groupId = `customFilterGroup${++customFilterGroupCounter}`;
+    const groupsContainer = document.getElementById('customFilterGroups');
+    
+    const groupHtml = `
+        <div class="card mb-3 filter-group" id="${groupId}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <label class="form-label me-2 mb-0 fw-bold text-primary">
+                        <i class="fas fa-layer-group me-1"></i>Group Logic:
+                    </label>
+                    <select class="form-select form-select-sm me-3 group-logic" data-group="${groupId}" style="width: auto;" onchange="updateCustomFilters()">
+                        <option value="AND">AND</option>
+                        <option value="OR">OR</option>
+                    </select>
+                    <small class="text-muted badge bg-light">conditions in this group</small>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-success btn-sm me-1" onclick="addCustomCondition('${groupId}')">
+                        <i class="fas fa-plus"></i> Add Condition
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeCustomFilterGroup('${groupId}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="conditions-container" id="${groupId}_conditions">
+                    <!-- Conditions will be added here -->
+                </div>
+            </div>
+        </div>
+    `;
+    
+    groupsContainer.insertAdjacentHTML('beforeend', groupHtml);
+    addCustomCondition(groupId);
+}
+
+// Add condition to a group
+function addCustomCondition(groupId) {
+    const conditionId = `customCondition${++customConditionCounter}`;
+    const conditionsContainer = document.getElementById(`${groupId}_conditions`);
+    
+    const conditionHtml = `
+        <div class="row mb-2 condition" id="${conditionId}">
+            <div class="col-md-3">
+                <select class="form-select condition-field" data-condition="${conditionId}" onchange="onCustomFieldChange('${conditionId}')">
+                    <option value="">-- Select field --</option>
+                    ${customTableColumns.map(col => `<option value="${col.name}" data-category="${col.category}">${col.name} (${col.type})</option>`).join('')}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select condition-operation" data-condition="${conditionId}" onchange="onCustomOperationChange('${conditionId}')" disabled>
+                    <option value="">-- Select operation --</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <div class="value-container" id="${conditionId}_value">
+                    <input type="text" class="form-control condition-value" data-condition="${conditionId}" placeholder="Enter value" disabled>
+                </div>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeCustomCondition('${conditionId}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    conditionsContainer.insertAdjacentHTML('beforeend', conditionHtml);
+}
+
+// Handle field selection change
+function onCustomFieldChange(conditionId) {
+    const fieldSelect = document.querySelector(`[data-condition="${conditionId}"].condition-field`);
+    const operationSelect = document.querySelector(`[data-condition="${conditionId}"].condition-operation`);
+    const valueContainer = document.getElementById(`${conditionId}_value`);
+    
+    const selectedOption = fieldSelect.options[fieldSelect.selectedIndex];
+    const category = selectedOption.getAttribute('data-category');
+    
+    // Clear and populate operations
+    operationSelect.innerHTML = '<option value="">-- Select operation --</option>';
+    operationSelect.disabled = false;
+    
+    if (category && customFilterOperations[category]) {
+        customFilterOperations[category].forEach(op => {
+            const option = document.createElement('option');
+            option.value = op.value;
+            option.textContent = op.label;
+            operationSelect.appendChild(option);
+        });
+    }
+    
+    // Reset value container
+    valueContainer.innerHTML = '<input type="text" class="form-control condition-value" data-condition="' + conditionId + '" placeholder="Enter value" disabled>';
+    
+    updateCustomFilters();
+}
+
+// Handle operation selection change
+function onCustomOperationChange(conditionId) {
+    const operationSelect = document.querySelector(`[data-condition="${conditionId}"].condition-operation`);
+    const valueContainer = document.getElementById(`${conditionId}_value`);
+    const fieldSelect = document.querySelector(`[data-condition="${conditionId}"].condition-field`);
+    
+    const operation = operationSelect.value;
+    const selectedFieldOption = fieldSelect.options[fieldSelect.selectedIndex];
+    const category = selectedFieldOption.getAttribute('data-category');
+    
+    // Build appropriate input based on operation and field type
+    let inputHtml = '';
+    
+    if (operation === 'is_null' || operation === 'is_not_null') {
+        inputHtml = '<span class="form-control-plaintext text-muted">No value required</span>';
+    } else if (operation === 'between') {
+        const inputType = category === 'date' ? 'date' : (category === 'number' ? 'number' : 'text');
+        inputHtml = `
+            <div class="row">
+                <div class="col-5">
+                    <input type="${inputType}" class="form-control condition-value-min" data-condition="${conditionId}" placeholder="Min value">
+                </div>
+                <div class="col-2 text-center">
+                    <span class="form-control-plaintext">and</span>
+                </div>
+                <div class="col-5">
+                    <input type="${inputType}" class="form-control condition-value-max" data-condition="${conditionId}" placeholder="Max value">
+                </div>
+            </div>
+        `;
+    } else if (category === 'boolean') {
+        inputHtml = `
+            <select class="form-select condition-value" data-condition="${conditionId}">
+                <option value="">-- Select value --</option>
+                <option value="true">True</option>
+                <option value="false">False</option>
+            </select>
+        `;
+    } else {
+        const inputType = category === 'date' ? 'date' : (category === 'number' ? 'number' : 'text');
+        const placeholder = operation === 'in' || operation === 'not_in' ? 'Enter comma-separated values' : 'Enter value';
+        inputHtml = `<input type="${inputType}" class="form-control condition-value" data-condition="${conditionId}" placeholder="${placeholder}">`;
+    }
+    
+    valueContainer.innerHTML = inputHtml;
+    
+    // Add event listeners to new inputs
+    valueContainer.querySelectorAll('input, select').forEach(input => {
+        input.addEventListener('input', updateCustomFilters);
+        input.addEventListener('change', updateCustomFilters);
+    });
+    
+    updateCustomFilters();
+}
+
+// Remove filter group
+function removeCustomFilterGroup(groupId) {
+    document.getElementById(groupId).remove();
+    updateCustomFilters();
+}
+
+// Remove condition
+function removeCustomCondition(conditionId) {
+    const conditionEl = document.getElementById(conditionId);
+    const groupEl = conditionEl.closest('.filter-group');
+    
+    conditionEl.remove();
+    
+    // If no conditions left in group, remove the group
+    const remainingConditions = groupEl.querySelectorAll('.condition');
+    if (remainingConditions.length === 0) {
+        groupEl.remove();
+    }
+    
+    updateCustomFilters();
+}
+
+// Update custom filters object
+function updateCustomFilters() {
+    const mainLogic = document.getElementById('customMainLogic').value;
+    const groups = [];
+    
+    document.querySelectorAll('#customFilterGroups .filter-group').forEach(groupEl => {
+        const groupId = groupEl.id;
+        const groupLogic = document.querySelector(`[data-group="${groupId}"].group-logic`).value;
+        const conditions = [];
+        
+        groupEl.querySelectorAll('.condition').forEach(conditionEl => {
+            const conditionId = conditionEl.id;
+            const field = document.querySelector(`[data-condition="${conditionId}"].condition-field`).value;
+            const operation = document.querySelector(`[data-condition="${conditionId}"].condition-operation`).value;
+            
+            if (!field || !operation) return;
+            
+            let value = null;
+            if (operation === 'between') {
+                const minInput = document.querySelector(`[data-condition="${conditionId}"].condition-value-min`);
+                const maxInput = document.querySelector(`[data-condition="${conditionId}"].condition-value-max`);
+                if (minInput && maxInput && minInput.value && maxInput.value) {
+                    value = { min: minInput.value, max: maxInput.value };
+                }
+            } else if (operation !== 'is_null' && operation !== 'is_not_null') {
+                const valueInput = document.querySelector(`[data-condition="${conditionId}"].condition-value`);
+                if (valueInput) {
+                    value = valueInput.value;
+                }
+            }
+            
+            if (value !== null || operation === 'is_null' || operation === 'is_not_null') {
+                conditions.push({ field, operation, value });
+            }
+        });
+        
+        if (conditions.length > 0) {
+            groups.push({ logic: groupLogic, conditions });
+        }
+    });
+    
+    customFilters = { logic: mainLogic, groups };
+    updateCustomFilterCountBadge();
+}
+
+// Update filter count badge
+function updateCustomFilterCountBadge() {
+    const badge = document.getElementById('customFilterCountBadge');
+    const clearBtn = document.getElementById('clearCustomFiltersBtn');
+    
+    let conditionCount = 0;
+    customFilters.groups.forEach(group => {
+        conditionCount += group.conditions.length;
+    });
+    
+    if (conditionCount > 0) {
+        badge.textContent = conditionCount;
+        badge.classList.remove('d-none');
+        clearBtn.disabled = false;
+    } else {
+        badge.classList.add('d-none');
+        clearBtn.disabled = true;
+    }
+}
+
+// Clear all custom filters
+function clearCustomFilters() {
+    document.getElementById('customFilterGroups').innerHTML = '';
+    customFilters = { logic: 'AND', groups: [] };
+    updateCustomFilterCountBadge();
+}
+
+// Update loadTableColumns to enable filter button
+function enableCustomFiltersButton() {
+    const toggleBtn = document.getElementById('toggleCustomFiltersBtn');
+    const tableName = document.getElementById('customTableSelect').value;
+    
+    if (tableName) {
+        toggleBtn.disabled = false;
+    } else {
+        toggleBtn.disabled = true;
+        // Hide filter panel if table is deselected
+        document.getElementById('customFiltersPanel').style.display = 'none';
+        clearCustomFilters();
+    }
 }
 </script>
 {% endblock %}

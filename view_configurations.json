@@ -48,5 +48,30 @@
     },
     "created_at": 1757398581.8836906,
     "updated_at": 1757398581.8836906
+  },
+  "fe00d315-a056-4be9-a70b-59869f97f4d0_action_history_record": {
+    "database_id": "fe00d315-a056-4be9-a70b-59869f97f4d0",
+    "table_name": "action_history_record",
+    "configuration": {
+      "list": {
+        "primary": "id",
+        "secondary": [
+          "number",
+          "ip_address",
+          "action",
+          "user_id"
+        ]
+      },
+      "detail": {
+        "partitions": [
+          {
+            "name": "General Information",
+            "fields": []
+          }
+        ]
+      }
+    },
+    "created_at": 1757592649.1323051,
+    "updated_at": 1757592649.1323054
   }
 }

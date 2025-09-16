@@ -80,20 +80,23 @@
 
 <!-- Data Panel -->
 <div class="card table-data-card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div class="d-flex justify-content-between align-items-center w-100">
-            <h5 class="mb-0 fw-semibold">
+    <div class="card-header data-ribbon">
+        <!-- Left Section: Data Info -->
+        <div class="ribbon-left">
+            <h5 class="data-title mb-0 fw-semibold">
                 <i class="fas fa-list me-2"></i>Data 
-                <span id="dataInfo">
+                <span id="dataInfo" class="data-count">
                     {% if filtered %}
                         <span class="badge bg-warning">Filtered</span>
                     {% endif %}
-                    ({{ (rows|length if rows else 0) }} of {{ total_rows }} rows)
+                    <span id="rowCountDisplay">({{ (rows|length if rows else 0) }} of {{ total_rows }} rows)</span>
                 </span>
             </h5>
+        </div>
             
-            <!-- View Toggle Controls -->
-            <div class="view-toggle-controls d-flex">
+        <!-- Center Section: View Toggle Controls -->
+        <div class="ribbon-center">
+            <div class="view-toggle-controls">
                 <button type="button" class="view-toggle-btn active" id="tableViewBtn" onclick="switchToTableView()">
                     <i class="fas fa-table"></i>
                     <span class="d-none d-md-inline">Table</span>
@@ -105,8 +108,10 @@
             </div>
         </div>
         
-        <div class="d-flex gap-2 align-items-center">
+        <!-- Right Section: Controls -->
+        <div class="ribbon-right">
             <!-- Pagination Controls -->
+            <div class="pagination-controls">
             <div class="btn-group" role="group" aria-label="Rows per page">
                 <a href="#" onclick="changePageSize(25)" 
                    class="btn btn-outline-primary btn-sm {{ 'active' if limit == 25 else '' }}">25</a>
@@ -116,17 +121,19 @@
                    class="btn btn-outline-primary btn-sm {{ 'active' if limit == 100 else '' }}">100</a>
                 <a href="#" onclick="changePageSize(250)" 
                    class="btn btn-outline-primary btn-sm {{ 'active' if limit == 250 else '' }}">250</a>
+                </div>
             </div>
             
-            <!-- Export Button -->
-            <button type="button" class="btn btn-success btn-sm icon-hover" onclick="exportData()">
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button type="button" class="btn btn-success btn-sm icon-hover" onclick="tryExport()">
                 <i class="fas fa-download me-1"></i>Export CSV
             </button>
             
-            <!-- Refresh Button -->
             <button type="button" class="btn btn-outline-secondary btn-sm icon-hover" onclick="refreshData()">
                 <i class="fas fa-sync-alt me-1"></i>Refresh
             </button>
+            </div>
         </div>
     </div>
     
@@ -515,6 +522,111 @@
     </div>
 </div>
 
+<!-- Export Panel Overlay -->
+<div id="exportOverlay" class="export-overlay" onclick="closeExportPanel()"></div>
+
+<!-- Export Panel -->
+<div id="exportPanel" class="export-panel">
+    <div class="export-panel-header">
+        <h5 class="mb-0">
+            <i class="fas fa-download me-2"></i>Export CSV
+        </h5>
+        <button type="button" class="btn btn-outline-light btn-sm" onclick="closeExportPanel()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    
+    <div class="export-panel-body">
+        <!-- Export Options -->
+        <div class="mb-4">
+            <h6 class="fw-bold mb-3">
+                <i class="fas fa-cog me-2"></i>Export Options
+            </h6>
+            
+            <!-- Export Scope Options -->
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="includeFilters" checked onchange="updateFilterStatus()">
+                <label class="form-check-label" for="includeFilters">
+                    <strong>Apply Current Filters</strong>
+                    <small class="d-block text-muted" id="filterStatusText">Export only the filtered data currently displayed</small>
+                </label>
+            </div>
+            
+            <!-- Current Filter Status Display -->
+            <div class="alert alert-light border" id="currentFilterStatus">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-filter me-2 text-primary"></i>
+                    <div>
+                        <small class="fw-bold text-primary">Current Filters:</small>
+                        <div id="filterStatusDisplay" class="small text-muted">
+                            No filters applied - will export all data
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Column Selection -->
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">
+                    <i class="fas fa-columns me-2"></i>Select Columns
+                </h6>
+                <div>
+                    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="selectAllColumns()">
+                        <i class="fas fa-check-double me-1"></i>Select All
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAllColumns()">
+                        <i class="fas fa-times me-1"></i>Clear All
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Column Search Bar -->
+            <div class="mb-3">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" id="columnSearchInput" 
+                           placeholder="Search columns by name..." 
+                           oninput="filterExportColumns()" 
+                           onkeyup="filterExportColumns()" 
+                           onkeydown="handleSearchKeydown(event)"
+                           autocomplete="off">
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearColumnSearch()" id="clearSearchBtn" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <small class="text-muted mt-1 d-block">
+                    <span id="columnSearchStatus">Showing all columns</span>
+                </small>
+            </div>
+            
+            <div class="export-columns-container" id="exportColumnsContainer">
+                <!-- Column checkboxes will be dynamically populated -->
+            </div>
+        </div>
+        
+        <!-- Export Summary -->
+        <div class="export-summary mb-4" id="exportSummary">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <span id="exportSummaryText">Select columns to export</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="export-panel-footer">
+        <button type="button" class="btn btn-secondary me-2" onclick="closeExportPanel()">
+            <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button type="button" class="btn btn-success" onclick="executeExport()" id="executeExportBtn" disabled>
+            <i class="fas fa-download me-1"></i>Export CSV
+        </button>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -529,9 +641,11 @@ let currentLimit = {{ limit }};
 let currentTableName = {{ table_name | tojson }};
 let currentRowData = {{ (rows | tojson) if rows else '[]' }};
 let currentColumns = {{ (columns | tojson) if columns else '[]' }};
+let currentTotalRows = {{ total_rows if total_rows is defined else 0 }};
 let currentRowIndex = 0;
 let currentView = 'table'; // 'table' or 'list'
 let serverViewConfig = {{ view_config|tojson if view_config else 'null' }};
+let showTotalCount = true; // Toggle state for total count display
 
 // Filter operations configuration
 const filterOperations = {
@@ -1045,6 +1159,14 @@ function refreshData() {
 
 // Update Data Table
 function updateDataTable(data) {
+    // Update current row data
+    if (data.rows) {
+        currentRowData = data.rows;
+    }
+    
+    // Update row count display
+    updateRowCountDisplay();
+    
     // This would require a full page reload to update the template
     // For now, redirect with the new parameters
     const params = new URLSearchParams({
@@ -1059,8 +1181,512 @@ function updateDataTable(data) {
     window.location.href = `/table/${currentTableName}?${params}`;
 }
 
-// Export Data
+// Export Panel Functions
+function openExportPanel() {
+    console.log('openExportPanel called');
+    console.log('Current filters state:', currentFilters);
+    
+    const overlay = document.getElementById('exportOverlay');
+    const panel = document.getElementById('exportPanel');
+    
+    console.log('Elements found:', { overlay: !!overlay, panel: !!panel });
+    
+    if (!overlay || !panel) {
+        console.error('Export panel elements not found');
+        showToast('Export panel not available', 'error');
+        return;
+    }
+    
+    // Always load filters from URL to ensure we have the current state
+    const urlParams = new URLSearchParams(window.location.search);
+    const filtersParam = urlParams.get('filters');
+    if (filtersParam) {
+        try {
+            currentFilters = JSON.parse(filtersParam);
+            console.log('Loaded filters from URL in export panel:', currentFilters);
+        } catch (e) {
+            console.error('Error parsing filters from URL in export panel:', e);
+        }
+    } else {
+        console.log('No filters in URL, using current state:', currentFilters);
+    }
+    
+    // Populate columns
+    populateExportColumns();
+    
+    // Reset search
+    const searchInput = document.getElementById('columnSearchInput');
+    if (searchInput) {
+        searchInput.value = '';
+        filterExportColumns();
+    }
+    
+    // Update filter status display (after loading filters)
+    updateFilterStatus();
+    
+    // Force update of export summary to reflect current filter state
+    updateExportSummary();
+    
+    // Show panel
+    overlay.classList.add('active');
+    panel.classList.add('active');
+    
+    // Prevent body scroll
+    document.body.style.overflow = 'hidden';
+    
+    console.log('Export panel opened');
+}
+
+function closeExportPanel() {
+    const overlay = document.getElementById('exportOverlay');
+    const panel = document.getElementById('exportPanel');
+    
+    // Hide panel
+    overlay.classList.remove('active');
+    panel.classList.remove('active');
+    
+    // Restore body scroll
+    document.body.style.overflow = '';
+}
+
+function populateExportColumns() {
+    console.log('populateExportColumns called');
+    const container = document.getElementById('exportColumnsContainer');
+    
+    if (!container) {
+        console.error('Export columns container not found');
+        return;
+    }
+    
+    console.log('currentColumns:', currentColumns);
+    
+    if (!currentColumns || currentColumns.length === 0) {
+        console.error('No columns available for export');
+        container.innerHTML = '<div class="alert alert-warning">No columns available for export</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    currentColumns.forEach((column, index) => {
+        const columnItem = document.createElement('div');
+        columnItem.className = 'export-column-item d-flex align-items-center';
+        
+        columnItem.innerHTML = `
+            <div class="form-check flex-grow-1">
+                <input class="form-check-input export-column-checkbox" type="checkbox" 
+                       id="exportCol_${index}" value="${column}" checked 
+                       onchange="updateExportSummary()">
+                <label class="form-check-label" for="exportCol_${index}">
+                    ${column}
+                </label>
+            </div>
+            <span class="column-type">Column</span>
+        `;
+        
+        container.appendChild(columnItem);
+        console.log(`Created checkbox for column ${index}: ${column}`);
+    });
+    
+    console.log('Populated', currentColumns.length, 'columns');
+    updateExportSummary();
+}
+
+
+function updateExportSummary() {
+    console.log('updateExportSummary called');
+    const checkboxes = document.querySelectorAll('.export-column-checkbox:checked');
+    const allCheckboxes = document.querySelectorAll('.export-column-checkbox');
+    const selectedCount = checkboxes.length;
+    const totalCount = currentColumns.length;
+    
+    console.log('Checkboxes found:', {
+        all: allCheckboxes.length,
+        checked: selectedCount,
+        totalColumns: totalCount
+    });
+    
+    const summaryText = document.getElementById('exportSummaryText');
+    const exportBtn = document.getElementById('executeExportBtn');
+    
+    console.log('Elements found:', {
+        summaryText: !!summaryText,
+        exportBtn: !!exportBtn
+    });
+    
+    const includeFilters = document.getElementById('includeFilters').checked;
+    const hasFilters = currentFilters.groups.length > 0;
+    
+    let dataScope = '';
+    if (includeFilters && hasFilters) {
+        dataScope = ' (filtered data only)';
+    } else if (!includeFilters && hasFilters) {
+        dataScope = ' (all data - filters ignored)';
+    } else {
+        dataScope = ' (all data)';
+    }
+    
+    if (selectedCount === 0) {
+        console.log('No columns selected, disabling export button');
+        summaryText.textContent = 'No columns selected. Please select at least one column to export.';
+        exportBtn.disabled = true;
+    } else if (selectedCount === totalCount) {
+        console.log('All columns selected, enabling export button');
+        summaryText.textContent = `All ${totalCount} columns selected for export${dataScope}.`;
+        exportBtn.disabled = false;
+    } else {
+        console.log('Some columns selected, enabling export button');
+        summaryText.textContent = `${selectedCount} of ${totalCount} columns selected for export${dataScope}.`;
+        exportBtn.disabled = false;
+    }
+}
+
+// Filter export columns based on search input
+function filterExportColumns() {
+    console.log('filterExportColumns called');
+    
+    const searchInput = document.getElementById('columnSearchInput');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const columnItems = document.querySelectorAll('.export-column-item');
+    const statusSpan = document.getElementById('columnSearchStatus');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    
+    console.log('Search details:', {
+        searchTerm: searchTerm,
+        columnItemsFound: columnItems.length,
+        statusSpan: !!statusSpan,
+        clearBtn: !!clearBtn
+    });
+    
+    let visibleCount = 0;
+    let totalCount = columnItems.length;
+    
+    columnItems.forEach((item, index) => {
+        const label = item.querySelector('.form-check-label');
+        const columnName = label ? label.textContent.toLowerCase().trim() : '';
+        
+        console.log(`Column ${index}: "${columnName}" - searching for "${searchTerm}"`);
+        
+        if (searchTerm === '' || columnName.includes(searchTerm)) {
+            item.classList.remove('search-hidden');
+            item.style.display = '';
+            visibleCount++;
+            console.log(`Column ${index} visible`);
+        } else {
+            item.classList.add('search-hidden');
+            item.style.display = 'none';
+            console.log(`Column ${index} hidden`);
+        }
+    });
+    
+    console.log(`Filtering complete: ${visibleCount} of ${totalCount} visible`);
+    
+    // Update status and clear button visibility
+    if (statusSpan) {
+        if (searchTerm === '') {
+            statusSpan.textContent = `Showing all ${totalCount} columns`;
+            if (clearBtn) clearBtn.style.display = 'none';
+        } else {
+            statusSpan.textContent = `Showing ${visibleCount} of ${totalCount} columns`;
+            if (clearBtn) clearBtn.style.display = visibleCount === 0 ? 'none' : 'block';
+        }
+    }
+    
+    // Show no results message if no columns match
+    const container = document.getElementById('exportColumnsContainer');
+    if (container) {
+        let noResultsMsg = container.querySelector('.no-results-message');
+        
+        if (visibleCount === 0 && searchTerm !== '') {
+            if (!noResultsMsg) {
+                noResultsMsg = document.createElement('div');
+                noResultsMsg.className = 'no-results-message alert alert-warning text-center';
+                noResultsMsg.innerHTML = `
+                    <i class="fas fa-search me-2"></i>
+                    No columns found matching "<strong>${searchTerm}</strong>"
+                    <br><small class="text-muted">Try a different search term</small>
+                `;
+                container.appendChild(noResultsMsg);
+            }
+        } else if (noResultsMsg) {
+            noResultsMsg.remove();
+        }
+    }
+}
+
+// Clear column search
+function clearColumnSearch() {
+    const searchInput = document.getElementById('columnSearchInput');
+    searchInput.value = '';
+    filterExportColumns();
+    searchInput.focus();
+}
+
+// Handle keyboard shortcuts in search
+function handleSearchKeydown(event) {
+    if (event.key === 'Escape') {
+        clearColumnSearch();
+        event.preventDefault();
+    }
+}
+
+// Update filter status display
+function updateFilterStatus() {
+    const filterStatusDisplay = document.getElementById('filterStatusDisplay');
+    const filterStatusText = document.getElementById('filterStatusText');
+    const includeFiltersCheckbox = document.getElementById('includeFilters');
+    
+    console.log('updateFilterStatus called - currentFilters:', currentFilters);
+    console.log('updateFilterStatus - filter groups:', currentFilters.groups);
+    console.log('updateFilterStatus - filter groups length:', currentFilters.groups.length);
+    
+    if (!filterStatusDisplay || !filterStatusText) {
+        console.log('updateFilterStatus - Elements not found:', { filterStatusDisplay: !!filterStatusDisplay, filterStatusText: !!filterStatusText });
+        return;
+    }
+    
+    const hasFilters = currentFilters.groups.length > 0;
+    const includeFilters = includeFiltersCheckbox ? includeFiltersCheckbox.checked : true;
+    console.log('updateFilterStatus - hasFilters:', hasFilters, 'includeFilters:', includeFilters);
+    
+    if (!hasFilters) {
+        filterStatusDisplay.innerHTML = '<span class="text-info"><i class="fas fa-info-circle me-1"></i>No filters applied - will export all data</span>';
+        filterStatusText.textContent = 'Export all data (no filters currently active)';
+    } else if (!includeFilters) {
+        filterStatusDisplay.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i>Filters disabled - will export ALL data</span>';
+        filterStatusText.textContent = 'Export all data (filters will be ignored)';
+    } else {
+        // Show current filter summary
+        let filterSummary = '';
+        let conditionCount = 0;
+        
+        currentFilters.groups.forEach((group, groupIndex) => {
+            conditionCount += group.conditions.length;
+            if (groupIndex > 0) filterSummary += ` ${currentFilters.logic} `;
+            
+            const groupConditions = group.conditions.map(condition => {
+                return `${condition.field} ${condition.operation} ${condition.value || ''}`;
+            }).join(` ${group.logic} `);
+            
+            if (group.conditions.length > 1) {
+                filterSummary += `(${groupConditions})`;
+            } else {
+                filterSummary += groupConditions;
+            }
+        });
+        
+        filterStatusDisplay.innerHTML = `
+            <span class="text-success">
+                <i class="fas fa-check-circle me-1"></i>
+                ${conditionCount} filter(s) active - will export filtered data only
+            </span>
+            <br>
+            <small class="text-muted">${filterSummary}</small>
+        `;
+        filterStatusText.textContent = 'Export only filtered data (matching current table filters)';
+    }
+    
+    // Also update the export summary to reflect filter status
+    updateExportSummary();
+}
+
+// Enhanced select all to work with filtered results
+function selectAllColumns() {
+    const visibleCheckboxes = document.querySelectorAll('.export-column-item:not(.search-hidden) .export-column-checkbox');
+    console.log('selectAllColumns: found', visibleCheckboxes.length, 'visible checkboxes');
+    visibleCheckboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateExportSummary();
+}
+
+// Enhanced deselect all to work with filtered results  
+function deselectAllColumns() {
+    const visibleCheckboxes = document.querySelectorAll('.export-column-item:not(.search-hidden) .export-column-checkbox');
+    console.log('deselectAllColumns: found', visibleCheckboxes.length, 'visible checkboxes');
+    visibleCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateExportSummary();
+}
+
+function executeExport() {
+    console.log('executeExport called');
+    console.log('currentTableName:', currentTableName);
+    console.log('currentColumns:', currentColumns);
+    console.log('currentTotalRows:', currentTotalRows);
+    
+    const selectedCheckboxes = document.querySelectorAll('.export-column-checkbox:checked');
+    const includeFilters = document.getElementById('includeFilters').checked;
+    
+    console.log('Selected checkboxes count:', selectedCheckboxes.length);
+    console.log('Include filters:', includeFilters);
+    
+    if (selectedCheckboxes.length === 0) {
+        showToast('Please select at least one column to export', 'warning');
+        return;
+    }
+    
+    const selectedColumns = Array.from(selectedCheckboxes).map(cb => cb.value);
+    console.log('Selected columns:', selectedColumns);
+    
+    const params = new URLSearchParams();
+    
+    // Add filters if checkbox is checked and filters exist
+    console.log('Export: Current filters state:', currentFilters);
+    console.log('Export: Filter groups count:', currentFilters.groups.length);
+    console.log('Export: Include filters:', includeFilters);
+    
+    if (includeFilters && currentFilters.groups.length > 0) {
+        params.append('filters', JSON.stringify(currentFilters));
+        console.log('Export: Adding filters:', currentFilters);
+        console.log('Export: Filters JSON string:', JSON.stringify(currentFilters));
+    } else {
+        console.log('Export: No filters to apply. includeFilters:', includeFilters, 'filterGroups:', currentFilters.groups.length);
+    }
+    
+    // Add selected columns
+    if (selectedColumns.length < currentColumns.length) {
+        params.append('columns', selectedColumns.join(','));
+        console.log('Export: Selected columns:', selectedColumns);
+    } else {
+        console.log('Export: All columns selected');
+    }
+    
+    // Add streaming parameter for large datasets
+    params.append('streaming', 'true');
+    params.append('chunk_size', '2000'); // Increased chunk size for better performance
+    
+    const exportUrl = `/api/table/${currentTableName}/export?${params}`;
+    console.log('Export URL:', exportUrl);
+    console.log('Export parameters:', Object.fromEntries(params.entries()));
+    
+    // Test the URL first with credentials
+    console.log('Testing export URL...');
+    fetch(exportUrl, { 
+        method: 'HEAD',
+        credentials: 'same-origin'  // Include session cookies
+    })
+        .then(response => {
+            console.log('Export URL test response:', response.status, response.statusText);
+            if (response.ok) {
+                console.log('Export URL is accessible, proceeding with download');
+                performExport(exportUrl, selectedColumns, includeFilters);
+            } else if (response.status === 401 || response.status === 403) {
+                console.error('Authentication required');
+                showToast('Session expired. Please refresh the page and try again.', 'error');
+            } else {
+                console.error('Export URL returned error:', response.status);
+                showToast(`Export failed: ${response.status} ${response.statusText}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Export URL test failed:', error);
+            showToast(`Export failed: ${error.message}`, 'error');
+        });
+}
+
+function performExport(exportUrl, selectedColumns, includeFilters) {
+    console.log('performExport called with URL:', exportUrl);
+    console.log('currentTotalRows:', currentTotalRows);
+    
+    // Show progress indicator for large exports
+    const estimatedRows = typeof currentTotalRows !== 'undefined' ? currentTotalRows : 0;
+    const isLargeExport = estimatedRows > 1000000; // 1 million rows
+    
+    console.log('Export progress check:', {
+        currentTotalRows: currentTotalRows,
+        estimatedRows: estimatedRows,
+        isLargeExport: isLargeExport
+    });
+    
+    if (isLargeExport) {
+        showToast(`Starting large export of ${estimatedRows.toLocaleString()} rows... This may take several minutes for very large datasets.`, 'info');
+        
+        // Show progress modal
+        showExportProgress(estimatedRows);
+    }
+    
+    // Use a direct link approach with proper authentication
+    console.log('Creating download link...');
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = `${currentTableName}_export.csv`;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    
+    console.log('Triggering download...');
+    link.click();
+    
+    // Simple direct download
+    console.log('Starting direct download...');
+    window.location.href = exportUrl;
+    
+    // Clean up after a short delay
+    setTimeout(() => {
+        document.body.removeChild(link);
+    }, 1000);
+    
+    // Close panel and show success message
+    closeExportPanel();
+    
+    const hasFilters = currentFilters.groups.length > 0;
+    let message = `Export started! ${selectedColumns.length} columns will be exported`;
+    
+    if (includeFilters && hasFilters) {
+        let conditionCount = 0;
+        currentFilters.groups.forEach(group => {
+            conditionCount += group.conditions.length;
+        });
+        message += ` with ${conditionCount} filter(s) applied (filtered data only).`;
+    } else if (!includeFilters && hasFilters) {
+        message += ` (all data - filters ignored).`;
+    } else {
+        message += ` (all data).`;
+    }
+    
+    if (!isLargeExport) {
+        showToast(message, 'success');
+    }
+}
+
+// Legacy export function for backward compatibility
 function exportData() {
+    openExportPanel();
+}
+
+// Try export with fallback
+function tryExport() {
+    console.log('tryExport called');
+    console.log('currentTableName in tryExport:', currentTableName);
+    console.log('currentColumns in tryExport:', currentColumns);
+    
+    // Check if we have the required data
+    if (!currentTableName) {
+        console.error('No table name available');
+        showToast('No table selected for export', 'error');
+        return;
+    }
+    
+    if (!currentColumns || currentColumns.length === 0) {
+        console.error('No columns available');
+        showToast('No columns available for export', 'error');
+        return;
+    }
+    
+    // First, let's try to open the export panel directly
+    try {
+        openExportPanel();
+    } catch (error) {
+        console.error('Error opening export panel:', error);
+        console.log('Falling back to simple export');
+        simpleExport();
+    }
+}
+
+// Simple direct export function as fallback
+function simpleExport() {
+    console.log('simpleExport called');
     const params = new URLSearchParams();
     
     if (currentFilters.groups.length > 0) {
@@ -1068,16 +1694,136 @@ function exportData() {
     }
     
     const exportUrl = `/api/table/${currentTableName}/export?${params}`;
+    console.log('Simple export URL:', exportUrl);
     
-    // Create a temporary link to trigger download
-    const link = document.createElement('a');
-    link.href = exportUrl;
-    link.download = `${currentTableName}_export.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Test the URL first with credentials
+    fetch(exportUrl, { 
+        method: 'HEAD',
+        credentials: 'same-origin'  // Include session cookies
+    })
+        .then(response => {
+            console.log('Simple export URL test response:', response.status, response.statusText);
+            if (response.ok) {
+                console.log('Simple export URL is accessible, proceeding with download');
+                performSimpleExport(exportUrl);
+            } else if (response.status === 401 || response.status === 403) {
+                console.error('Authentication required');
+                showToast('Session expired. Please refresh the page and try again.', 'error');
+            } else {
+                console.error('Simple export URL returned error:', response.status);
+                showToast(`Export failed: ${response.status} ${response.statusText}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Simple export URL test failed:', error);
+            showToast(`Export failed: ${error.message}`, 'error');
+        });
+}
+
+function performSimpleExport(exportUrl) {
+    console.log('performSimpleExport called with URL:', exportUrl);
+    
+    // Use a form submission to properly handle authentication
+    const form = document.createElement('form');
+    form.method = 'GET';
+    form.action = exportUrl;
+    form.target = '_blank';
+    form.style.display = 'none';
+    
+    // Add any necessary parameters as hidden inputs
+    const params = new URLSearchParams(exportUrl.split('?')[1]);
+    for (const [key, value] of params) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
+    }
+    
+    document.body.appendChild(form);
+    console.log('Submitting simple export form...');
+    form.submit();
+    
+    // Clean up after a short delay
+    setTimeout(() => {
+        document.body.removeChild(form);
+    }, 1000);
     
     showToast('Export started', 'success');
+}
+
+// Export Progress Management
+function showExportProgress(totalRows) {
+    const progressModal = document.createElement('div');
+    progressModal.id = 'exportProgressModal';
+    progressModal.className = 'modal fade show';
+    progressModal.style.display = 'block';
+    progressModal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-download me-2"></i>Exporting Data
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Exporting ${totalRows.toLocaleString()} rows...</span>
+                            <span id="exportProgressText">0%</span>
+                        </div>
+                        <div class="progress mt-2" style="height: 20px;">
+                            <div id="exportProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Large exports are processed in chunks for optimal performance. 
+                        The download will start automatically when ready.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="hideExportProgress()">
+                        <i class="fas fa-times me-1"></i>Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(progressModal);
+    
+    // Simulate progress (since we can't track actual progress easily with streaming)
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress > 90) progress = 90; // Don't go to 100% until actually complete
+        
+        const progressBar = document.getElementById('exportProgressBar');
+        const progressText = document.getElementById('exportProgressText');
+        
+        if (progressBar && progressText) {
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressText.textContent = `${Math.round(progress)}%`;
+        }
+    }, 1000);
+    
+    // Store interval ID for cleanup
+    progressModal.dataset.intervalId = progressInterval;
+}
+
+function hideExportProgress() {
+    const progressModal = document.getElementById('exportProgressModal');
+    if (progressModal) {
+        const intervalId = progressModal.dataset.intervalId;
+        if (intervalId) {
+            clearInterval(intervalId);
+        }
+        progressModal.remove();
+    }
 }
 
 // URL Management
@@ -1478,14 +2224,35 @@ function initializeViewPreference() {
     }
 }
 
+// Update Row Count Display
+function updateRowCountDisplay() {
+    const rowCountDisplay = document.getElementById('rowCountDisplay');
+    if (!rowCountDisplay) return;
+    
+    const currentRows = currentRowData ? currentRowData.length : 0;
+    const totalRows = {{ total_rows }};
+    
+    // Load setting from localStorage
+    const savedState = localStorage.getItem('showTotalCount');
+    const showTotalCount = savedState !== null ? savedState === 'true' : true;
+    
+    if (showTotalCount) {
+        rowCountDisplay.textContent = `(${currentRows} of ${totalRows} rows)`;
+    } else {
+        rowCountDisplay.textContent = `(${currentRows} rows)`;
+    }
+}
+
 // Enhanced initialization
 document.addEventListener('DOMContentLoaded', function() {
     // Load any existing filters from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const filtersParam = urlParams.get('filters');
+    console.log('Loading filters from URL:', filtersParam);
     if (filtersParam) {
         try {
             currentFilters = JSON.parse(filtersParam);
+            console.log('Parsed currentFilters:', currentFilters);
             updateFilterCountBadge();
             if (currentFilters.groups.length > 0) {
                 toggleFilterPanel(true);
@@ -1494,6 +2261,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             console.error('Error parsing filters from URL:', e);
         }
+    } else {
+        console.log('No filters found in URL parameters');
     }
     
     // Load filter presets from localStorage
@@ -1501,6 +2270,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize view preference
     initializeViewPreference();
+    
+    // Initialize row count display
+    updateRowCountDisplay();
+    
+    // Listen for setting changes from settings page
+    window.addEventListener('rowCountSettingChanged', function(event) {
+        console.log('Row count setting changed:', event.detail);
+        updateRowCountDisplay();
+    });
     
     // Add keyboard shortcuts for detail modal
     document.addEventListener('keydown', function(e) {
@@ -1517,6 +2295,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // Add keyboard support for export panel
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const panel = document.getElementById('exportPanel');
+            if (panel && panel.classList.contains('active')) {
+                closeExportPanel();
+            }
+        }
+    });
+    
+    // Test if export panel elements are available
+    setTimeout(() => {
+        const overlay = document.getElementById('exportOverlay');
+        const panel = document.getElementById('exportPanel');
+        console.log('Export panel elements check:', {
+            overlay: !!overlay,
+            panel: !!panel,
+            overlayId: overlay ? overlay.id : 'not found',
+            panelId: panel ? panel.id : 'not found'
+        });
+    }, 1000);
 });
 </script>
 {% endblock %}

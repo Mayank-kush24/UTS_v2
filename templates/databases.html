@@ -233,6 +233,9 @@ document.getElementById('connectForm').addEventListener('submit', async function
         const formData = new FormData(this);
         const response = await fetch(`/databases/connect/${currentDatabaseId}`, {
             method: 'POST',
+            headers: {
+                'Accept': 'application/json'
+            },
             body: formData
         });
         
@@ -248,7 +251,7 @@ document.getElementById('connectForm').addEventListener('submit', async function
                 }
             }, 1000);
         } else {
-            showToast(data.error, 'error');
+            showToast(data.message || data.error, 'error');
         }
     } catch (error) {
         showToast('Connection error: ' + error.message, 'error');
@@ -277,6 +280,9 @@ async function testConnection() {
         
         const response = await fetch(`/databases/test/${currentDatabaseId}`, {
             method: 'POST',
+            headers: {
+                'Accept': 'application/json'
+            },
             body: formData
         });
         
@@ -344,6 +350,7 @@ function disconnectDatabase(dbId, dbName) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
             },
             body: 'database_id=' + encodeURIComponent(dbId)
         })

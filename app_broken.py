@@ -10,16 +10,12 @@ import uuid
 import time
 import hashlib
 import secrets
-from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from werkzeug.utils import secure_filename
 from PIL import Image
 import base64
 import threading
 from collections import defaultdict
-import csv
-from io import StringIO
-import uuid
 
 # Load environment variables
 load_dotenv()
@@ -275,19 +271,6 @@ def get_default_avatars():
         {'id': 'default-6', 'name': 'Default 6', 'icon': 'fas fa-user-astronaut'},
     ]
 
-def load_users():
-    """Load users from JSON file"""
-    try:
-        with open('users.json', 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-
-def save_users(users):
-    """Save users to JSON file"""
-    with open('users.json', 'w') as f:
-        json.dump(users, f, indent=2)
-
 class DatabaseManager:
     def __init__(self):
         self.connection = None
@@ -304,7 +287,7 @@ class DatabaseManager:
     
     def test_connection(self, config=None):
         """Test database connection with given or default config"""
-        test_config = config if isinstance(config, dict) else self.config
+        test_config = config or self.config
         try:
             conn = psycopg2.connect(**test_config)
             conn.close()
@@ -314,21 +297,18 @@ class DatabaseManager:
     
     def connect(self, config=None):
         """Establish database connection"""
-        connect_config = config if isinstance(config, dict) else self.config
+        connect_config = config or self.config
         try:
             # Close existing connection if any
             if self.connection:
                 try:
                     self.connection.close()
-                except Exception:
+                except:
                     pass
             
             self.connection = psycopg2.connect(**connect_config)
             # Set autocommit mode to avoid transaction issues
             self.connection.autocommit = True
-            
-            # Update the config with the new connection details
-            self.config.update(connect_config)
             
             # Invalidate database-related caches when connecting to new database
             cache_manager.invalidate_pattern('database_queries', f".*:{connect_config.get('database', 'default')}")
@@ -356,26 +336,26 @@ class DatabaseManager:
             try:
                 self.connect()
                 return True
-            except Exception:
+            except:
                 return False
         except InternalError:
             # Transaction is in aborted state, rollback and continue
             try:
                 self.connection.rollback()
                 return True
-            except Exception:
+            except:
                 # If rollback fails, reconnect
                 try:
                     self.connect()
                     return True
-                except Exception:
+                except:
                     return False
         except Exception:
             # For any other error, try to reset the connection
             try:
                 self.connect()
                 return True
-            except Exception:
+            except:
                 return False
     
     def get_tables(self):
@@ -570,23 +550,11 @@ class DatabaseManager:
         params = []
         
         # Process filter groups
-        if not isinstance(filters, dict):
-            print(f"_build_where_clause: filters is not a dict: {type(filters)}, {filters}")
-            return "", []
-            
         for group in filters.get('groups', []):
             print(f"_build_where_clause: Processing group: {group}")
             group_conditions = []
             
-            if not isinstance(group, dict):
-                print(f"_build_where_clause: group is not a dict: {type(group)}, {group}")
-                continue
-                
             for condition in group.get('conditions', []):
-                if not isinstance(condition, dict):
-                    print(f"_build_where_clause: condition is not a dict: {type(condition)}, {condition}")
-                    continue
-                    
                 field = condition.get('field')
                 operation = condition.get('operation')
                 value = condition.get('value')
@@ -779,7 +747,7 @@ class DatabaseManager:
                             SELECT pg_size_pretty(pg_database_size(current_database()));
                         """)
                         db_size = cursor.fetchone()[0]
-                    except Exception:
+                    except:
                         db_size = "Unknown"
                     
                     # Get table statistics (with fallback)
@@ -798,7 +766,7 @@ class DatabaseManager:
                             LIMIT 10;
                         """)
                         table_stats = cursor.fetchall()
-                    except Exception:
+                    except:
                         table_stats = []
                     
                     cursor.close()
@@ -872,7 +840,7 @@ class DatabaseManager:
                             SELECT pg_size_pretty(pg_total_relation_size(%s));
                         """, [table_name])
                         table_size = cursor.fetchone()[0]
-                    except Exception:
+                    except:
                         table_size = "Unknown"
                     
                     # Get column count
@@ -1017,7 +985,7 @@ class DatabaseManager:
                                 SELECT pg_size_pretty(pg_relation_size(%s));
                             """, [table_name])
                             table_size = cursor.fetchone()[0]
-                        except Exception:
+                        except:
                             table_size = "Unknown"
                     
                     table_stats[table_name] = {
@@ -1138,7 +1106,7 @@ class DatabaseManager:
                         cursor.execute(count_query)
                         actual_count = cursor.fetchone()[0]
                         row_count = actual_count
-                    except Exception:
+                    except:
                         row_count = estimated_rows
                 else:
                     row_count = estimated_rows
@@ -1323,7 +1291,7 @@ class DatabaseManager:
                             'table_count': table_count
                         }
                     }
-                except Exception:
+                except:
                     pass
             
             return False, f"Error getting visualization data: {str(e)}"
@@ -1518,10 +1486,6 @@ class DatabaseManager:
         except Exception as e:
             return False, f"Error getting count: {str(e)}"
 
-    def disconnect(self):
-        """Disconnect from database (alias for close)"""
-        self.close()
-    
     def close(self):
         """Close database connection"""
         if self.connection:
@@ -1631,16 +1595,7 @@ class UserManager:
         try:
             with open(self.storage_file, 'r') as f:
                 data = json.load(f)
-                print(f"Loaded data type: {type(data)}, content: {data}")
-                
-                # Handle different data formats
-                if isinstance(data, dict):
-                    users = data.get('users', [])
-                elif isinstance(data, list):
-                    users = data
-                else:
-                    print(f"Unexpected data format: {type(data)}")
-                    users = []
+                users = data.get('users', [])
                 
                 # Update cache and rebuild index
                 self._users_cache = users
@@ -1669,7 +1624,7 @@ class UserManager:
                 with open(self.storage_file, 'r') as f:
                     existing_data = json.load(f)
                     data['sessions'] = existing_data.get('sessions', {})
-            except Exception:
+            except:
                 pass
             
             with open(self.storage_file, 'w') as f:
@@ -1761,137 +1716,6 @@ class UserManager:
                 return user
         return None
     
-    def create_user(self, username, password, email, full_name=None, phone=None, position=None, role='user'):
-        """Create a new user"""
-        try:
-            users = self.load_users()
-            
-            # Check if username already exists
-            for user in users:
-                if user['username'].lower() == username.lower():
-                    return False, "Username already exists"
-                if user['email'].lower() == email.lower():
-                    return False, "Email already exists"
-            
-            # Create new user
-            new_user = {
-                'id': str(uuid.uuid4()),
-                'username': username,
-                'password_hash': self.hash_password(password),
-                'email': email,
-                'full_name': full_name or username,
-                'phone': phone or '',
-                'position': position or '',
-                'role': role,
-                'created_at': datetime.now().isoformat(),
-                'last_login': None,
-                'is_active': True,
-                'avatar': 'default-1'
-            }
-            
-            users.append(new_user)
-            
-            if self.save_users(users):
-                return True, "User created successfully"
-            else:
-                return False, "Failed to save user"
-                
-        except Exception as e:
-            return False, f"Error creating user: {str(e)}"
-    
-    def update_last_login(self, user_id):
-        """Update last login timestamp for a user"""
-        users = self.load_users()
-        for user in users:
-            if user['id'] == user_id:
-                user['last_login'] = datetime.now().isoformat()
-                if self.save_users(users):
-                    return True
-                else:
-                    return False
-        return False
-    
-    def update_user(self, user_id, email=None, password=None, full_name=None, phone=None, position=None, role=None, is_active=None):
-        """Update user information"""
-        try:
-            users = self.load_users()
-            user = next((u for u in users if u['id'] == user_id), None)
-            
-            if not user:
-                return False, "User not found"
-            
-            # Update fields if provided
-            if email is not None:
-                # Check if email is already used by another user
-                for u in users:
-                    if u['id'] != user_id and u['email'].lower() == email.lower():
-                        return False, "Email already exists"
-                user['email'] = email
-            
-            if password is not None:
-                user['password_hash'] = self.hash_password(password)
-            
-            if full_name is not None:
-                user['full_name'] = full_name
-            
-            if phone is not None:
-                user['phone'] = phone
-            
-            if position is not None:
-                user['position'] = position
-            
-            if role is not None:
-                user['role'] = role
-            
-            if is_active is not None:
-                user['is_active'] = is_active
-            
-            if self.save_users(users):
-                return True, "User updated successfully"
-            else:
-                return False, "Failed to save user"
-                
-        except Exception as e:
-            return False, f"Error updating user: {str(e)}"
-    
-    def delete_user(self, user_id):
-        """Delete a user"""
-        try:
-            users = self.load_users()
-            user = next((u for u in users if u['id'] == user_id), None)
-            
-            if not user:
-                return False, "User not found"
-            
-            users.remove(user)
-            
-            if self.save_users(users):
-                return True, "User deleted successfully"
-            else:
-                return False, "Failed to save user"
-                
-        except Exception as e:
-            return False, f"Error deleting user: {str(e)}"
-    
-    def reset_password(self, user_id, new_password):
-        """Reset user password"""
-        try:
-            users = self.load_users()
-            user = next((u for u in users if u['id'] == user_id), None)
-            
-            if not user:
-                return False, "User not found"
-            
-            user['password_hash'] = self.hash_password(new_password)
-            
-            if self.save_users(users):
-                return True, "Password reset successfully"
-            else:
-                return False, "Failed to save user"
-                
-        except Exception as e:
-            return False, f"Error resetting password: {str(e)}"
-    
     def update_user_avatar(self, user_id, avatar_path):
         """Update user avatar"""
         users = self.load_users()
@@ -1919,11 +1743,6 @@ def get_current_user():
     if 'user_id' in session:
         return user_manager.get_user_by_id(session['user_id'])
     return None
-
-@app.context_processor
-def inject_user():
-    """Make current_user available in all templates"""
-    return dict(current_user=get_current_user())
 
 def extend_session_if_needed():
     """Extend session for users with remember me enabled"""
@@ -1976,7 +1795,7 @@ class DatabaseStorage:
                 with open(self.storage_file, 'r') as f:
                     existing_data = json.load(f)
                     data['current_database_id'] = existing_data.get('current_database_id')
-            except Exception:
+            except:
                 data['current_database_id'] = None
             
             with open(self.storage_file, 'w') as f:
@@ -2060,7 +1879,7 @@ class DatabaseStorage:
             with open(self.storage_file, 'r') as f:
                 data = json.load(f)
                 return data.get('current_database_id')
-        except Exception:
+        except:
             return None
     
     def update_last_connected(self, db_id):
@@ -2135,350 +1954,6 @@ def load_view_configuration(table_name):
         print(f"Error loading view configuration: {e}")
         return None
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        remember_me = request.form.get('remember_me') == 'on'
-        
-        # Use UserManager for proper user authentication
-        user_manager = UserManager()
-        user = user_manager.get_user_by_username(username)
-        
-        if user and user_manager.verify_password(password, user['password_hash']):
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['full_name'] = user.get('full_name', '')
-            if remember_me:
-                session.permanent = True
-            else:
-                session.permanent = False
-            
-            # Update last login
-            user_manager.update_last_login(user['id'])
-            
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('index'))
-        else:
-            flash('Invalid username or password', 'error')
-    
-    return render_template('auth/login.html')
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        email = request.form['email']
-        
-        user_manager = UserManager()
-        success, message = user_manager.create_user(username, password, email)
-        if success:
-            flash('Registration successful! Please login.', 'success')
-            return redirect(url_for('login'))
-        else:
-            flash(message, 'error')
-    
-    return render_template('auth/register.html')
-
-@app.route('/profile')
-@login_required
-def profile():
-    current_user = get_current_user()
-    return render_template('auth/profile.html', current_user=current_user)
-
-@app.route('/databases')
-@login_required
-def databases():
-    """Database management page"""
-    try:
-        current_user = get_current_user()
-        print(f"Current user: {current_user}")
-        
-        # Load stored databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                data = json.load(f)
-                print(f"Loaded stored databases data: {type(data)}, {data}")
-                
-                # Handle different data formats
-                if isinstance(data, dict):
-                    stored_databases = data.get('databases', [])
-                elif isinstance(data, list):
-                    stored_databases = data
-                else:
-                    print(f"Unexpected stored databases format: {type(data)}")
-                    stored_databases = []
-                    
-            print(f"Processed stored databases: {type(stored_databases)}, {stored_databases}")
-        except FileNotFoundError:
-            stored_databases = []
-            print("No stored databases file found, using empty list")
-        except Exception as e:
-            print(f"Error loading stored databases: {e}")
-            stored_databases = []
-    except Exception as e:
-        print(f"Error in databases route: {e}")
-        import traceback
-        traceback.print_exc()
-        return f"Error: {e}", 500
-    
-    # Check current connection status
-    try:
-        connection_status = db_manager.connection is not None
-        current_database = None
-        
-        if connection_status:
-            # Try to get current database info
-            try:
-                cursor = db_manager.connection.cursor()
-                cursor.execute("SELECT current_database()")
-                current_db_name = cursor.fetchone()[0]
-                cursor.close()
-                
-                # Find matching stored database
-                if isinstance(stored_databases, list):
-                    for db in stored_databases:
-                        if isinstance(db, dict) and db.get('database') == current_db_name:
-                            current_database = db
-                            break
-            except Exception as e:
-                print(f"Error getting current database info: {e}")
-                pass
-    except Exception as e:
-        print(f"Error checking connection status: {e}")
-        connection_status = False
-        current_database = None
-    
-    # Get current database ID
-    current_db_id = None
-    try:
-        current_db_id = db_storage.get_current_database_id()
-    except Exception as e:
-        print(f"Error getting current database ID: {e}")
-    
-    return render_template('databases.html', 
-                         current_user=current_user,
-                         databases=stored_databases,
-                         current_database_id=current_db_id,
-                         connection_status=connection_status,
-                         current_database=current_database)
-
-@app.route('/view_table/<table_name>')
-@login_required
-def view_table(table_name):
-    """View data from specified table"""
-    limit = request.args.get('limit', 100, type=int)
-    page = request.args.get('page', 1, type=int)
-    
-    # Get filter parameters (for URL-based filtering)
-    filters = request.args.get('filters')
-    if filters:
-        try:
-            import json
-            filters = json.loads(filters)
-        except:
-            filters = None
-    
-    success, result = db_manager.get_table_data(table_name, limit=limit, page=page, filters=filters)
-    
-    if success:
-        # Calculate pagination info
-        total_pages = (result['total_rows'] + limit - 1) // limit
-        
-        # Load view configuration for this table
-        view_config = load_view_configuration(table_name)
-        
-        # Ensure columns is always a list
-        columns = result.get('columns', [])
-        if not isinstance(columns, list):
-            columns = []
-        
-        # Ensure rows is always a list
-        rows = result.get('rows', [])
-        if not isinstance(rows, list):
-            rows = []
-        
-        return render_template('table.html', 
-                             table_name=table_name, 
-                             columns=columns, 
-                             rows=rows,
-                             limit=limit,
-                             page=page,
-                             total_rows=result.get('total_rows', 0),
-                             total_pages=total_pages,
-                             filtered=result.get('filtered', False),
-                             view_config=view_config,
-                             current_user=get_current_user())
-    else:
-        flash(f"Error loading table data: {result}", "error")
-        return redirect(url_for('index'))
-
-@app.route('/view_config')
-@login_required
-def view_config():
-    """View configuration page"""
-    current_user = get_current_user()
-    return render_template('view_config.html', current_user=current_user)
-
-@app.route('/add_database', methods=['GET', 'POST'])
-@login_required
-def add_database():
-    """Add new database page"""
-    current_user = get_current_user()
-    
-    if request.method == 'POST':
-        try:
-            # Get form data
-            name = request.form.get('name')
-            host = request.form.get('host')
-            port = int(request.form.get('port', 5432))
-            database = request.form.get('database')
-            description = request.form.get('description', '')
-            
-            # Validate required fields
-            if not all([name, host, database]):
-                flash('Name, Host, and Database are required fields', 'error')
-                return render_template('add_database.html', current_user=current_user)
-            
-            # Note: Connection testing requires username/password which are not stored
-            # The user will need to test the connection manually when connecting
-            
-            # Load existing databases
-            try:
-                with open('stored_databases.json', 'r') as f:
-                    existing_data = json.load(f)
-                    databases = existing_data.get('databases', [])
-                    current_db_id = existing_data.get('current_database_id')
-            except FileNotFoundError:
-                databases = []
-                current_db_id = None
-            
-            # Check if database name already exists
-            if any(db.get('name') == name for db in databases):
-                flash('Database name already exists', 'error')
-                return render_template('add_database.html', current_user=current_user)
-            
-            # Add new database
-            new_db = {
-                'id': str(uuid.uuid4()),
-                'name': name,
-                'host': host,
-                'port': port,
-                'database': database,
-                'description': description,
-                'created_at': datetime.now().isoformat()
-            }
-            
-            databases.append(new_db)
-            
-            # Save to file with proper structure
-            data = {
-                'databases': databases,
-                'current_database_id': current_db_id
-            }
-            with open('stored_databases.json', 'w') as f:
-                json.dump(data, f, indent=2)
-            
-            flash('Database connection created successfully!', 'success')
-            return redirect(url_for('databases'))
-            
-        except psycopg2.Error as e:
-            flash(f'Database connection failed: {str(e)}', 'error')
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'error')
-    
-    return render_template('add_database.html', current_user=current_user)
-
-@app.route('/edit_database/<db_id>', methods=['GET', 'POST'])
-@login_required
-def edit_database(db_id):
-    """Edit database page"""
-    current_user = get_current_user()
-    
-    # Load existing databases
-    try:
-        with open('stored_databases.json', 'r') as f:
-            data = json.load(f)
-            databases = data.get('databases', [])
-            current_db_id = data.get('current_database_id')
-    except FileNotFoundError:
-        flash('No databases found', 'error')
-        return redirect(url_for('databases'))
-        current_db_id = None
-    
-    # Find the database
-    database = None
-    for db in databases:
-        if db.get('id') == db_id:
-            database = db
-            break
-    
-    if not database:
-        flash('Database not found', 'error')
-        return redirect(url_for('databases'))
-    
-    if request.method == 'POST':
-        try:
-            # Get form data
-            name = request.form.get('name')
-            host = request.form.get('host')
-            port = int(request.form.get('port', 5432))
-            database_name = request.form.get('database')
-            description = request.form.get('description', '')
-            
-            # Validate required fields
-            if not all([name, host, database_name]):
-                flash('Name, Host, and Database are required fields', 'error')
-                return render_template('edit_database.html', db_id=db_id, database=database, current_user=current_user)
-            
-            # Note: Connection testing requires username/password which are not stored
-            # The user will need to test the connection manually when connecting
-            
-            # Check if database name already exists (excluding current database)
-            if any(db.get('name') == name and db.get('id') != db_id for db in databases):
-                flash('Database name already exists', 'error')
-                return render_template('edit_database.html', db_id=db_id, database=database, current_user=current_user)
-            
-            # Update database
-            database['name'] = name
-            database['host'] = host
-            database['port'] = port
-            database['database'] = database_name
-            database['description'] = description
-            database['updated_at'] = datetime.now().isoformat()
-            
-            # Save to file with proper structure
-            save_data = {
-                'databases': databases,
-                'current_database_id': current_db_id
-            }
-            with open('stored_databases.json', 'w') as f:
-                json.dump(save_data, f, indent=2)
-            
-            flash('Database updated successfully!', 'success')
-            return redirect(url_for('databases'))
-            
-        except psycopg2.Error as e:
-            flash(f'Database connection failed: {str(e)}', 'error')
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'error')
-    
-    return render_template('edit_database.html', db_id=db_id, database=database, current_user=current_user)
-
-@app.route('/visualizations')
-@login_required
-def visualizations():
-    """Visualizations page"""
-    current_user = get_current_user()
-    return render_template('visualizations.html', current_user=current_user)
-
 @app.route('/')
 @login_required
 def index():
@@ -2489,33 +1964,8 @@ def index():
     # Check if we have a stored database connection
     current_db_id = db_storage.get_current_database_id()
     
-    # Only try to connect if we have a current database ID
-    success = False
-    message = "No database connected"
-    
-    if current_db_id:
-        # Get the stored database configuration
-        current_db = db_storage.get_database(current_db_id)
-        if current_db:
-            # Try to connect with stored config
-            if 'user' in current_db and 'password' in current_db:
-                config = {
-                    'host': current_db['host'],
-                    'port': current_db['port'],
-                    'database': current_db['database'],
-                    'user': current_db['user'],
-                    'password': current_db['password']
-                }
-            else:
-                # Use default credentials or environment variables
-                config = {
-                    'host': current_db['host'],
-                    'port': current_db['port'],
-                    'database': current_db['database'],
-                    'user': os.getenv('DB_USER', 'postgres'),
-                    'password': os.getenv('DB_PASSWORD', '')
-                }
-            success, message = db_manager.connect(config)
+    # Try to connect with existing config
+    success, message = db_manager.connect()
     
     tables = []
     stats = None
@@ -2546,6 +1996,13 @@ def config():
     current_user = get_current_user()
     return render_template('config.html', config=db_manager.config, current_user=current_user)
 
+@app.route('/view-config')
+@login_required
+def view_config():
+    """View configuration page for customizing table displays"""
+    current_user = get_current_user()
+    databases = get_stored_databases()
+    return render_template('view_config.html', databases=databases, current_user=current_user)
 
 @app.route('/test_connection', methods=['POST'])
 def test_connection():
@@ -2646,12 +2103,7 @@ def api_save_config():
 def api_disconnect():
     """API endpoint to disconnect database"""
     try:
-        # Close the database connection
         db_manager.close()
-        
-        # Clear the current database ID from storage
-        db_storage.set_current_database(None)
-        
         return jsonify({'success': True, 'message': 'Database disconnected successfully'})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
@@ -2686,11 +2138,13 @@ def api_change_password():
             return jsonify({'success': False, 'message': 'User not found'})
         
         # Verify current password
-        if not check_password_hash(user['password'], current_password):
+        current_password_hash = hashlib.sha256(current_password.encode()).hexdigest()
+        if user['password'] != current_password_hash:
             return jsonify({'success': False, 'message': 'Current password is incorrect'})
         
         # Update password
-        user['password'] = generate_password_hash(new_password)
+        new_password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+        user['password'] = new_password_hash
         
         # Save users
         with open('users.json', 'w') as f:
@@ -2711,6 +2165,55 @@ def api_clear_sessions():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/table/<table_name>')
+@login_required
+def view_table(table_name):
+    """View data from specified table"""
+    limit = request.args.get('limit', 100, type=int)
+    page = request.args.get('page', 1, type=int)
+    
+    # Get filter parameters (for URL-based filtering)
+    filters = request.args.get('filters')
+    if filters:
+        try:
+            import json
+            filters = json.loads(filters)
+        except:
+            filters = None
+    
+    success, result = db_manager.get_table_data(table_name, limit=limit, page=page, filters=filters)
+    
+    if success:
+        # Calculate pagination info
+        total_pages = (result['total_rows'] + limit - 1) // limit
+        
+        # Load view configuration for this table
+        view_config = load_view_configuration(table_name)
+        
+        # Ensure columns is always a list
+        columns = result.get('columns', [])
+        if not isinstance(columns, list):
+            columns = []
+        
+        # Ensure rows is always a list
+        rows = result.get('rows', [])
+        if not isinstance(rows, list):
+            rows = []
+        
+        return render_template('table.html', 
+                             table_name=table_name, 
+                             columns=columns, 
+                             rows=rows,
+                             limit=limit,
+                             page=page,
+                             total_rows=result.get('total_rows', 0),
+                             total_pages=total_pages,
+                             filtered=result.get('filtered', False),
+                             view_config=view_config,
+                             current_user=get_current_user())
+    else:
+        flash(f"Error loading table data: {result}", "error")
+        return redirect(url_for('index'))
 
 @app.route('/api/tables')
 @login_required
@@ -2724,33 +2227,8 @@ def api_tables():
     
     # Check if we have a connection
     if not db_manager.connection:
-        # Try to connect with stored database config
-        current_db_id = db_storage.get_current_database_id()
-        if current_db_id:
-            current_db = db_storage.get_database(current_db_id)
-            if current_db:
-                if 'user' in current_db and 'password' in current_db:
-                    config = {
-                        'host': current_db['host'],
-                        'port': current_db['port'],
-                        'database': current_db['database'],
-                        'user': current_db['user'],
-                        'password': current_db['password']
-                    }
-                else:
-                    config = {
-                        'host': current_db['host'],
-                        'port': current_db['port'],
-                        'database': current_db['database'],
-                        'user': os.getenv('DB_USER', 'postgres'),
-                        'password': os.getenv('DB_PASSWORD', '')
-                    }
-                connect_success, connect_message = db_manager.connect(config)
-            else:
-                connect_success, connect_message = False, "No stored database configuration found"
-        else:
-            connect_success, connect_message = False, "No database selected"
-        
+        # Try to connect with existing config
+        connect_success, connect_message = db_manager.connect()
         if not connect_success:
             return jsonify({
                 'success': False, 
@@ -2764,7 +2242,7 @@ def api_tables():
         cache_manager.set('api_responses', cache_key, response)
         return jsonify(response)
     else:
-        return jsonify({'success': False, 'message': result})
+        return jsonify({'success': False, 'error': result})
 
 @app.route('/api/stats')
 @login_required
@@ -2783,7 +2261,7 @@ def api_stats():
         cache_manager.set('api_responses', cache_key, response)
         return jsonify(response)
     else:
-        return jsonify({'success': False, 'message': result})
+        return jsonify({'success': False, 'error': result})
 
 @app.route('/api/connection/status')
 @login_required
@@ -2807,29 +2285,8 @@ def api_connection_status():
                     'timestamp': datetime.now().isoformat()
                 })
             except Exception as e:
-                # Connection exists but is broken, try to reconnect with stored config
-                current_db = db_storage.get_database(current_db_id)
-                if current_db:
-                    if 'user' in current_db and 'password' in current_db:
-                        config = {
-                            'host': current_db['host'],
-                            'port': current_db['port'],
-                            'database': current_db['database'],
-                            'user': current_db['user'],
-                            'password': current_db['password']
-                        }
-                    else:
-                        config = {
-                            'host': current_db['host'],
-                            'port': current_db['port'],
-                            'database': current_db['database'],
-                            'user': os.getenv('DB_USER', 'postgres'),
-                            'password': os.getenv('DB_PASSWORD', '')
-                        }
-                    connect_success, connect_message = db_manager.connect(config)
-                else:
-                    connect_success, connect_message = False, "No stored database configuration found"
-                
+                # Connection exists but is broken, try to reconnect
+                connect_success, connect_message = db_manager.connect()
                 return jsonify({
                     'success': connect_success, 
                     'message': f'Connection was broken, reconnection: {connect_message}',
@@ -2837,38 +2294,18 @@ def api_connection_status():
                 })
         else:
             # No active connection, try to connect with stored config
-            current_db = db_storage.get_database(current_db_id)
-            if current_db:
-                if 'user' in current_db and 'password' in current_db:
-                    config = {
-                        'host': current_db['host'],
-                        'port': current_db['port'],
-                        'database': current_db['database'],
-                        'user': current_db['user'],
-                        'password': current_db['password']
-                    }
-                else:
-                    config = {
-                        'host': current_db['host'],
-                        'port': current_db['port'],
-                        'database': current_db['database'],
-                        'user': os.getenv('DB_USER', 'postgres'),
-                        'password': os.getenv('DB_PASSWORD', '')
-                    }
-                connect_success, connect_message = db_manager.connect(config)
-            else:
-                connect_success, connect_message = False, "No stored database configuration found"
-            
+            connect_success, connect_message = db_manager.connect()
             return jsonify({
                 'success': connect_success, 
                 'message': f'No active connection. Connection attempt: {connect_message}',
                 'timestamp': datetime.now().isoformat()
             })
     else:
-        # No stored database, don't try to connect
+        # No stored database, try to connect with default config
+        connect_success, connect_message = db_manager.connect()
         return jsonify({
-            'success': False, 
-            'message': 'No database selected. Please connect to a database first.',
+            'success': connect_success, 
+            'message': f'No stored database. Using default config: {connect_message}',
             'timestamp': datetime.now().isoformat()
         })
 
@@ -2889,7 +2326,7 @@ def api_table_info(table_name):
         cache_manager.set('table_metadata', cache_key, response)
         return jsonify(response)
     else:
-        return jsonify({'success': False, 'message': result})
+        return jsonify({'success': False, 'error': result})
 
 @app.route('/api/tables/bulk-stats')
 @login_required
@@ -2911,7 +2348,7 @@ def api_bulk_table_stats():
         cache_manager.set('database_queries', cache_key, response)
         return jsonify(response)
     else:
-        return jsonify({'success': False, 'message': result})
+        return jsonify({'success': False, 'error': result})
 
 @app.route('/api/tables/lazy-stats')
 @login_required
@@ -2922,7 +2359,7 @@ def api_lazy_table_stats():
     ultra_fast = request.args.get('ultra_fast', 'false').lower() == 'true'
     
     if not table_names:
-        return jsonify({'success': False, 'message': 'No table names provided'})
+        return jsonify({'success': False, 'error': 'No table names provided'})
     
     # Choose the fastest method based on parameters
     if ultra_fast:
@@ -2938,7 +2375,7 @@ def api_lazy_table_stats():
     if success:
         return jsonify({'success': True, 'stats': result})
     else:
-        return jsonify({'success': False, 'message': result})
+        return jsonify({'success': False, 'error': result})
 
 @app.route('/api/table/<table_name>/data')
 @login_required
@@ -2954,7 +2391,7 @@ def get_table_data_api(table_name):
             try:
                 import json
                 filters = json.loads(filters)
-            except Exception:
+            except:
                 filters = None
         
         success, result = db_manager.get_table_data(table_name, limit=per_page, page=page, filters=filters)
@@ -3030,781 +2467,6 @@ def get_column_values_api(table_name, column_name):
             'success': False,
             'error': str(e)
         })
-
-@app.route('/api/users/list')
-@login_required
-def api_users_list():
-    """API endpoint to get list of users"""
-    try:
-        users = user_manager.load_users()
-        
-        # Remove sensitive data and format for frontend
-        safe_users = []
-        for user in users:
-            safe_user = {
-                'id': user['id'],
-                'username': user['username'],
-                'email': user['email'],
-                'full_name': user.get('full_name', ''),
-                'phone': user.get('phone', ''),
-                'position': user.get('position', ''),
-                'role': user.get('role', 'user'),
-                'created_at': user.get('created_at', ''),
-                'last_login': user.get('last_login', ''),
-                'is_active': user.get('is_active', True),
-                'avatar': user.get('avatar', 'default-1')
-            }
-            safe_users.append(safe_user)
-        
-        return jsonify({
-            'success': True,
-            'users': safe_users,
-            'total': len(safe_users)
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/users/create', methods=['POST'])
-@login_required
-def api_users_create():
-    """API endpoint to create a new user"""
-    try:
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
-        email = data.get('email')
-        full_name = data.get('full_name', '')
-        phone = data.get('phone', '')
-        position = data.get('position', '')
-        role = data.get('role', 'user')
-        
-        if not username or not password:
-            return jsonify({'success': False, 'message': 'Username and password are required'}), 400
-        
-        # Use UserManager to create user
-        success, message = user_manager.create_user(
-            username=username,
-            password=password,
-            email=email,
-            full_name=full_name,
-            phone=phone,
-            position=position,
-            role=role
-        )
-        
-        if success:
-            return jsonify({'success': True, 'message': 'User created successfully'})
-        else:
-            return jsonify({'success': False, 'message': message}), 400
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/users/<user_id>')
-@login_required
-def api_users_get(user_id):
-    """API endpoint to get a specific user"""
-    try:
-        users = user_manager.load_users()
-        user = next((u for u in users if u['id'] == user_id), None)
-        
-        if not user:
-            return jsonify({'success': False, 'message': 'User not found'}), 404
-        
-        # Remove sensitive data
-        safe_user = {
-            'id': user['id'],
-            'username': user['username'],
-            'email': user['email'],
-            'full_name': user.get('full_name', ''),
-            'phone': user.get('phone', ''),
-            'position': user.get('position', ''),
-            'role': user.get('role', 'user'),
-            'created_at': user.get('created_at', ''),
-            'last_login': user.get('last_login', ''),
-            'is_active': user.get('is_active', True),
-            'avatar': user.get('avatar', 'default-1')
-        }
-        
-        return jsonify({
-            'success': True,
-            'user': safe_user
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/users/<user_id>', methods=['PUT'])
-@login_required
-def api_users_update(user_id):
-    """API endpoint to update a user"""
-    try:
-        data = request.get_json()
-        
-        # Use UserManager to update user
-        success, message = user_manager.update_user(
-            user_id=user_id,
-            email=data.get('email'),
-            password=data.get('password'),
-            full_name=data.get('full_name'),
-            phone=data.get('phone'),
-            position=data.get('position'),
-            role=data.get('role'),
-            is_active=data.get('is_active')
-        )
-        
-        if success:
-            return jsonify({'success': True, 'message': 'User updated successfully'})
-        else:
-            return jsonify({'success': False, 'message': message}), 400
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/users/<user_id>', methods=['DELETE'])
-@login_required
-def api_users_delete(user_id):
-    """API endpoint to delete a user"""
-    try:
-        # Don't allow deleting the current user
-        if user_id == session.get('user_id'):
-            return jsonify({'success': False, 'message': 'Cannot delete current user'}), 400
-        
-        # Use UserManager to delete user
-        success, message = user_manager.delete_user(user_id)
-        
-        if success:
-            return jsonify({'success': True, 'message': 'User deleted successfully'})
-        else:
-            return jsonify({'success': False, 'message': message}), 400
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/users/<user_id>/reset-password', methods=['POST'])
-@login_required
-def api_users_reset_password(user_id):
-    """API endpoint to reset a user's password"""
-    try:
-        data = request.get_json()
-        new_password = data.get('password')
-        
-        if not new_password:
-            return jsonify({'success': False, 'message': 'New password is required'}), 400
-        
-        # Use UserManager to reset password
-        success, message = user_manager.reset_password(user_id, new_password)
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Password reset successfully'})
-        else:
-            return jsonify({'success': False, 'message': message}), 400
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/databases')
-@login_required
-def api_databases_list():
-    """API endpoint to get list of stored databases"""
-    try:
-        with open('stored_databases.json', 'r') as f:
-            data = json.load(f)
-            databases = data.get('databases', [])
-        return jsonify({
-            'success': True,
-            'databases': databases
-        })
-    except FileNotFoundError:
-        return jsonify({
-            'success': True,
-            'databases': []
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/databases', methods=['POST'])
-@login_required
-def api_databases_create():
-    """API endpoint to create a new database connection"""
-    try:
-        data = request.get_json()
-        
-        # Validate required fields
-        required_fields = ['name', 'host', 'port', 'database', 'user', 'password']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({'success': False, 'message': f'{field} is required'}), 400
-        
-        # Test connection first
-        try:
-            test_connection = psycopg2.connect(
-                host=data['host'],
-                port=data['port'],
-                database=data['database'],
-                user=data['user'],
-                password=data['password']
-            )
-            test_connection.close()
-        except psycopg2.Error as e:
-            return jsonify({'success': False, 'message': f'Database connection failed: {str(e)}'}), 400
-        
-        # Load existing databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                existing_data = json.load(f)
-                databases = existing_data.get('databases', [])
-                current_db_id = existing_data.get('current_database_id')
-        except FileNotFoundError:
-            databases = []
-            current_db_id = None
-        
-        # Check if database name already exists
-        if any(db.get('name') == data['name'] for db in databases):
-            return jsonify({'success': False, 'error': 'Database name already exists'}), 400
-        
-        # Add new database
-        new_db = {
-            'id': str(uuid.uuid4()),
-            'name': data['name'],
-            'host': data['host'],
-            'port': data['port'],
-            'database': data['database'],
-            'user': data['user'],
-            'description': data.get('description', ''),
-            'created_at': datetime.now().isoformat()
-        }
-        
-        databases.append(new_db)
-        
-        # Save to file with proper structure
-        save_data = {
-            'databases': databases,
-            'current_database_id': current_db_id
-        }
-        with open('stored_databases.json', 'w') as f:
-            json.dump(save_data, f, indent=2)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Database connection created successfully',
-            'database': new_db
-        })
-    except psycopg2.Error as e:
-        return jsonify({'success': False, 'message': f'Database connection failed: {str(e)}'}), 400
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/databases/<db_id>', methods=['PUT'])
-@login_required
-def api_databases_update(db_id):
-    """API endpoint to update a database connection"""
-    try:
-        data = request.get_json()
-        
-        # Load existing databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                existing_data = json.load(f)
-                databases = existing_data.get('databases', [])
-                current_db_id = existing_data.get('current_database_id')
-        except FileNotFoundError:
-            return jsonify({'success': False, 'message': 'No databases found'}), 404
-        
-        # Find the database
-        db_index = None
-        for i, db in enumerate(databases):
-            if db.get('id') == db_id:
-                db_index = i
-                break
-        
-        if db_index is None:
-            return jsonify({'success': False, 'message': 'Database not found'}), 404
-        
-        # Test connection if credentials are provided
-        if any(field in data for field in ['host', 'port', 'database', 'user', 'password']):
-            try:
-                test_connection = psycopg2.connect(
-                    host=data.get('host', databases[db_index]['host']),
-                    port=data.get('port', databases[db_index]['port']),
-                    database=data.get('database', databases[db_index]['database']),
-                    user=data.get('user', databases[db_index]['user']),
-                    password=data.get('password', databases[db_index]['password'])
-                )
-                test_connection.close()
-            except psycopg2.Error as e:
-                return jsonify({'success': False, 'message': f'Database connection failed: {str(e)}'}), 400
-        
-        # Update database
-        for field in ['name', 'host', 'port', 'database', 'user', 'password', 'description']:
-            if field in data:
-                databases[db_index][field] = data[field]
-        
-        databases[db_index]['updated_at'] = datetime.now().isoformat()
-        
-        # Save to file with proper structure
-        save_data = {
-            'databases': databases,
-            'current_database_id': current_db_id
-        }
-        with open('stored_databases.json', 'w') as f:
-            json.dump(save_data, f, indent=2)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Database updated successfully',
-            'database': databases[db_index]
-        })
-    except psycopg2.Error as e:
-        return jsonify({'success': False, 'message': f'Database connection failed: {str(e)}'}), 400
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/databases/<db_id>', methods=['DELETE'])
-@login_required
-def api_databases_delete(db_id):
-    """API endpoint to delete a database connection"""
-    try:
-        # Load existing databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                data = json.load(f)
-                databases = data.get('databases', [])
-                current_db_id = data.get('current_database_id')
-        except FileNotFoundError:
-            return jsonify({'success': False, 'message': 'No databases found'}), 404
-        
-        # Find and remove the database
-        original_count = len(databases)
-        databases = [db for db in databases if db.get('id') != db_id]
-        
-        if len(databases) == original_count:
-            return jsonify({'success': False, 'message': 'Database not found'}), 404
-        
-        # Save to file with proper structure
-        save_data = {
-            'databases': databases,
-            'current_database_id': current_db_id
-        }
-        with open('stored_databases.json', 'w') as f:
-            json.dump(save_data, f, indent=2)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Database deleted successfully'
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/databases/<db_id>/test', methods=['POST'])
-@login_required
-def api_databases_test(db_id):
-    """API endpoint to test a database connection"""
-    try:
-        # Load existing databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                data = json.load(f)
-                databases = data.get('databases', [])
-        except FileNotFoundError:
-            return jsonify({'success': False, 'message': 'No databases found'}), 404
-        
-        # Find the database
-        database = None
-        for db in databases:
-            if db.get('id') == db_id:
-                database = db
-                break
-        
-        if not database:
-            return jsonify({'success': False, 'message': 'Database not found'}), 404
-        
-        # Test connection
-        try:
-            # Check if user/password are available
-            if 'user' in database and 'password' in database:
-                connection = psycopg2.connect(
-                    host=database['host'],
-                    port=database['port'],
-                    database=database['database'],
-                    user=database['user'],
-                    password=database['password']
-                )
-            else:
-                # Try with default credentials or environment variables
-                connection = psycopg2.connect(
-                    host=database['host'],
-                    port=database['port'],
-                    database=database['database'],
-                    user=os.getenv('DB_USER', 'postgres'),
-                    password=os.getenv('DB_PASSWORD', '')
-                )
-        except psycopg2.Error as e:
-            return jsonify({'success': False, 'message': f'Database connection failed: {str(e)}'}), 400
-        
-        # Get basic info
-        cursor = connection.cursor()
-        cursor.execute("SELECT version()")
-        version = cursor.fetchone()[0]
-        cursor.close()
-        connection.close()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Connection successful',
-            'version': version
-        })
-    except psycopg2.Error as e:
-        return jsonify({'success': False, 'message': f'Database connection failed: {str(e)}'}), 400
-    except Exception as e:
-        print(f"Error in api_databases_test: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/databases/connect/<db_id>', methods=['POST'])
-@login_required
-def databases_connect(db_id):
-    """Connect to a database (form-based)"""
-    try:
-        # Load existing databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                data = json.load(f)
-                databases = data.get('databases', [])
-        except FileNotFoundError:
-            flash('No databases found', 'error')
-            return redirect(url_for('databases'))
-        
-        # Find the database
-        database = None
-        for db in databases:
-            if db.get('id') == db_id:
-                database = db
-                break
-        
-        if not database:
-            flash('Database not found', 'error')
-            return redirect(url_for('databases'))
-        
-        # Get username and password from form
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if not username or not password:
-            if 'application/json' in request.headers.get('Accept', ''):
-                return jsonify({'success': False, 'message': 'Username and password are required'}), 400
-            else:
-                flash('Username and password are required', 'error')
-                return redirect(url_for('databases'))
-        
-        # Create connection config
-        config = {
-            'host': database['host'],
-            'port': database['port'],
-            'database': database['database'],
-            'user': username,
-            'password': password
-        }
-        
-        # Test the connection
-        success, message = db_manager.test_connection(config)
-        
-        if success:
-            # Connect to database
-            connect_success, connect_message = db_manager.connect(config)
-            
-            if connect_success:
-                # Set this as the current database
-                db_storage.set_current_database(db_id)
-                
-                # Store the credentials used for this connection
-                database['user'] = username
-                database['password'] = password
-                database['last_connected'] = datetime.now().isoformat()
-                
-                # Save with proper structure
-                save_data = {
-                    'databases': databases,
-                    'current_database_id': db_id
-                }
-                with open('stored_databases.json', 'w') as f:
-                    json.dump(save_data, f, indent=2)
-                
-                if 'application/json' in request.headers.get('Accept', ''):
-                    return jsonify({
-                        'success': True, 
-                        'message': f'Connected to {database["name"]} successfully!',
-                        'redirect': url_for('index')
-                    })
-                else:
-                    flash(f'Connected to {database["name"]} successfully!', 'success')
-                    return redirect(url_for('index'))
-            else:
-                if 'application/json' in request.headers.get('Accept', ''):
-                    return jsonify({'success': False, 'message': f'Connection failed: {connect_message}'}), 400
-                else:
-                    flash(f'Connection failed: {connect_message}', 'error')
-                    return redirect(url_for('databases'))
-        else:
-            if 'application/json' in request.headers.get('Accept', ''):
-                return jsonify({'success': False, 'message': f'Connection test failed: {message}'}), 400
-            else:
-                flash(f'Connection test failed: {message}', 'error')
-                return redirect(url_for('databases'))
-    except Exception as e:
-        print(f"Error in databases_connect: {e}")
-        import traceback
-        traceback.print_exc()
-        if 'application/json' in request.headers.get('Accept', ''):
-            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
-        else:
-            flash(f'Error: {str(e)}', 'error')
-            return redirect(url_for('databases'))
-
-@app.route('/databases/test/<db_id>', methods=['POST'])
-@login_required
-def databases_test(db_id):
-    """Test a database connection (form-based)"""
-    try:
-        # Load existing databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                data = json.load(f)
-                databases = data.get('databases', [])
-        except FileNotFoundError:
-            flash('No databases found', 'error')
-            return redirect(url_for('databases'))
-        
-        # Find the database
-        database = None
-        for db in databases:
-            if db.get('id') == db_id:
-                database = db
-                break
-        
-        if not database:
-            flash('Database not found', 'error')
-            return redirect(url_for('databases'))
-        
-        # Get username and password from form
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if not username or not password:
-            if 'application/json' in request.headers.get('Accept', ''):
-                return jsonify({'success': False, 'message': 'Username and password are required for testing'}), 400
-            else:
-                flash('Username and password are required for testing', 'error')
-                return redirect(url_for('databases'))
-        
-        # Test connection
-        try:
-            # Use provided credentials for testing
-            connection = psycopg2.connect(
-                host=database['host'],
-                port=database['port'],
-                database=database['database'],
-                user=username,
-                password=password
-            )
-            
-            # Get basic info
-            cursor = connection.cursor()
-            cursor.execute("SELECT version()")
-            version = cursor.fetchone()[0]
-            cursor.close()
-            connection.close()
-            
-            # Check if this is an AJAX request
-            if 'application/json' in request.headers.get('Accept', ''):
-                return jsonify({'success': True, 'message': f'Connection successful! Database version: {version}'})
-            else:
-                flash(f'Connection successful! Database version: {version}', 'success')
-                return redirect(url_for('databases'))
-        except psycopg2.Error as e:
-            if 'application/json' in request.headers.get('Accept', ''):
-                return jsonify({'success': False, 'message': f'Database connection failed: {str(e)}'}), 400
-            else:
-                flash(f'Database connection failed: {str(e)}', 'error')
-                return redirect(url_for('databases'))
-    except Exception as e:
-        if 'application/json' in request.headers.get('Accept', ''):
-            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
-        else:
-            flash(f'Error: {str(e)}', 'error')
-            return redirect(url_for('databases'))
-
-@app.route('/databases/delete/<db_id>', methods=['POST'])
-@login_required
-def databases_delete(db_id):
-    """Delete a database connection (form-based)"""
-    try:
-        # Load existing databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                data = json.load(f)
-                databases = data.get('databases', [])
-                current_db_id = data.get('current_database_id')
-        except FileNotFoundError:
-            flash('No databases found', 'error')
-            return redirect(url_for('databases'))
-        
-        # Find and remove the database
-        original_count = len(databases)
-        databases = [db for db in databases if db.get('id') != db_id]
-        
-        if len(databases) == original_count:
-            flash('Database not found', 'error')
-        else:
-            # Save to file with proper structure
-            save_data = {
-                'databases': databases,
-                'current_database_id': current_db_id
-            }
-            with open('stored_databases.json', 'w') as f:
-                json.dump(save_data, f, indent=2)
-            flash('Database deleted successfully', 'success')
-        
-        return redirect(url_for('databases'))
-    except Exception as e:
-        flash(f'Error: {str(e)}', 'error')
-        return redirect(url_for('databases'))
-
-@app.route('/databases/disconnect', methods=['POST'])
-@login_required
-def databases_disconnect():
-    """Disconnect from current database (form-based)"""
-    try:
-        # Close the database connection
-        db_manager.disconnect()
-        
-        # Clear the current database ID from storage
-        db_storage.set_current_database(None)
-        
-        # Check if this is an AJAX request
-        if 'application/json' in request.headers.get('Accept', ''):
-            return jsonify({'success': True, 'message': 'Disconnected successfully'})
-        else:
-            flash('Disconnected successfully', 'success')
-            return redirect(url_for('databases'))
-    except Exception as e:
-        if 'application/json' in request.headers.get('Accept', ''):
-            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
-        else:
-            flash(f'Error: {str(e)}', 'error')
-            return redirect(url_for('databases'))
-
-@app.route('/api/databases/<db_id>/connect', methods=['POST'])
-@login_required
-def api_databases_connect(db_id):
-    """API endpoint to connect to a database"""
-    try:
-        # Load existing databases
-        try:
-            with open('stored_databases.json', 'r') as f:
-                existing_data = json.load(f)
-                databases = existing_data.get('databases', [])
-        except FileNotFoundError:
-            return jsonify({'success': False, 'message': 'No databases found'}), 404
-        
-        # Find the database
-        database = None
-        for db in databases:
-            if db.get('id') == db_id:
-                database = db
-                break
-        
-        if not database:
-            return jsonify({'success': False, 'message': 'Database not found'}), 404
-        
-        # Connect to database
-        if 'user' in database and 'password' in database:
-            config = {
-                'host': database['host'],
-                'port': database['port'],
-                'database': database['database'],
-                'user': database['user'],
-                'password': database['password']
-            }
-        else:
-            # Use default credentials or environment variables
-            config = {
-                'host': database['host'],
-                'port': database['port'],
-                'database': database['database'],
-                'user': os.getenv('DB_USER', 'postgres'),
-                'password': os.getenv('DB_PASSWORD', '')
-            }
-        success, message = db_manager.connect(config)
-        
-        if success:
-            # Update last connected time
-            database['last_connected'] = datetime.now().isoformat()
-            
-            # Set this as the current database
-            db_storage.set_current_database(db_id)
-            
-            # Save with proper structure
-            save_data = {
-                'databases': databases,
-                'current_database_id': db_id
-            }
-            with open('stored_databases.json', 'w') as f:
-                json.dump(save_data, f, indent=2)
-            
-            return jsonify({
-                'success': True,
-                'message': 'Connected successfully',
-                'database': database
-            })
-        else:
-            return jsonify({'success': False, 'error': message}), 400
-    except Exception as e:
-        print(f"Error in api_databases_connect: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/users/export')
-@login_required
-def api_users_export():
-    """API endpoint to export users as CSV"""
-    try:
-        users = load_users()
-        
-        # Generate CSV
-        output = StringIO()
-        writer = csv.writer(output)
-        
-        # Write header
-        writer.writerow(['Username', 'Email', 'Created At', 'Last Login', 'Active'])
-        
-        # Write data
-        for username, user_data in users.items():
-            writer.writerow([
-                username,
-                user_data.get('email', ''),
-                user_data.get('created_at', ''),
-                user_data.get('last_login', ''),
-                'Yes' if user_data.get('is_active', True) else 'No'
-            ])
-        
-        csv_content = output.getvalue()
-        output.close()
-        
-        # Return CSV as response
-        response = Response(
-            csv_content,
-            mimetype='text/csv',
-            headers={
-                'Content-Disposition': 'attachment; filename=users_export.csv',
-                'Content-Type': 'text/csv; charset=utf-8'
-            }
-        )
-        
-        return response
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/table/<table_name>/export')
 @login_required
@@ -3897,40 +2559,879 @@ def export_table_data(table_name):
             'error': f'Error exporting data: {str(e)}'
         })
 
-# Visualization API Routes
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+    """Export data in a single batch for smaller datasets with optimized memory usage"""
+    try:
+        print(f"Starting batch export for table {table_name}")
+        
+        # Test database connection first
+        if not db_manager.connection:
+            print("Batch Export - No database connection")
+            return jsonify({
+                'success': False,
+                'error': 'No database connection'
+            })
+        
+        # Get all filtered data (no pagination for export)
+        # Use a much larger limit for big datasets
+        print(f"Batch Export - Querying table {table_name} with limit 99999999")
+        success, result = db_manager.get_table_data(table_name, limit=99999999, page=1, filters=filters)
+        print(f"Batch Export - Database query success: {success}")
+        if success:
+            print(f"Batch Export - Rows returned: {len(result['rows'])}")
+            print(f"Batch Export - Columns: {result['columns']}")
+            if len(result['rows']) > 0:
+                print(f"Batch Export - First row sample: {result['rows'][0]}")
+            else:
+                print("Batch Export - WARNING: No rows returned from database!")
+        else:
+            print(f"Batch Export - Database error: {result}")
+        
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': f'Error exporting data: {result}'
+            })
+        
+        # Filter columns if specific columns are selected
+        if selected_columns:
+            print(f"Batch Export - Filtering columns: {selected_columns}")
+            # Find indices of selected columns
+            all_columns = result['columns']
+            column_indices = []
+            filtered_columns = []
+            
+            for col in selected_columns:
+                if col in all_columns:
+                    idx = all_columns.index(col)
+                    column_indices.append(idx)
+                    filtered_columns.append(col)
+                else:
+                    print(f"Batch Export - WARNING: Column '{col}' not found in table columns: {all_columns}")
+            
+            if not column_indices:
+                print("Batch Export - ERROR: No valid columns selected for export")
+                return jsonify({
+                    'success': False,
+                    'error': 'No valid columns selected for export'
+                })
+            
+            print(f"Batch Export - Column indices: {column_indices}")
+            print(f"Batch Export - Filtered columns: {filtered_columns}")
+            
+            # Filter the data
+            filtered_rows = []
+            for row in result['rows']:
+                filtered_row = [row[i] if i < len(row) else None for i in column_indices]
+                filtered_rows.append(filtered_row)
+            
+            export_columns = filtered_columns
+            export_rows = filtered_rows
+            print(f"Batch Export - Filtered rows count: {len(filtered_rows)}")
+        else:
+            # Export all columns
+            print("Batch Export - Exporting all columns")
+            export_columns = result['columns']
+            export_rows = result['rows']
+            print(f"Batch Export - All rows count: {len(export_rows)}")
+        
+        # Create CSV response
+        import csv
+        from io import StringIO
+        
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write headers
+        writer.writerow(export_columns)
+        
+        # Write data rows
+        print(f"Writing {len(export_rows)} rows to CSV")
+        for i, row in enumerate(export_rows):
+            writer.writerow(row)
+            if i < 5:  # Log first 5 rows for debugging
+                print(f"Row {i}: {row}")
+        
+        # Get CSV content
+        csv_content = output.getvalue()
+        output.close()
+        
+        print(f"CSV content length: {len(csv_content)} characters")
+        print(f"CSV preview: {csv_content[:200]}...")
+        
+        # Create filename
+        filename = _generate_export_filename(table_name, filters, selected_columns, total_rows)
+        
+        # Return CSV response
+        from flask import Response
+        return Response(
+            csv_content,
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename={filename}',
+                'Content-Type': 'text/csv; charset=utf-8'
+            }
+        )
+        
+    except Exception as e:
+        print(f"Batch export error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error in batch export: {str(e)}'
+        })
+
+def _stream_csv_export_simple(table_name, filters, selected_columns, total_rows, chunk_size):
+    """Simple streaming CSV export without named cursors for large datasets"""
+    try:
+        from flask import Response
+        import csv
+        from io import StringIO
+        
+        def generate_csv():
+            # Get column information first (optimized)
+            success, all_columns = db_manager.get_table_columns(table_name)
+            if not success:
+                yield f"Error: {all_columns}\n"
+                return
+            
+            # Determine export columns
+            if selected_columns:
+                column_indices = []
+                export_columns = []
+                
+                for col in selected_columns:
+                    if col in all_columns:
+                        idx = all_columns.index(col)
+                        column_indices.append(idx)
+                        export_columns.append(col)
+                
+                if not column_indices:
+                    yield "Error: No valid columns selected for export\n"
+                    return
+            else:
+                export_columns = all_columns
+                column_indices = list(range(len(all_columns)))
+            
+            # Write headers first
+            header_output = StringIO()
+            writer = csv.writer(header_output)
+            writer.writerow(export_columns)
+            yield header_output.getvalue()
+            header_output.close()
+            
+            # Stream data in chunks using pagination
+            page = 1
+            rows_exported = 0
+            chunk_size = min(chunk_size, 5000)  # Limit chunk size for memory efficiency
+            
+            print(f"Starting streaming export for {total_rows} rows with chunk size {chunk_size}")
+            
+            while rows_exported < total_rows:
+                # Get data for current page
+                print(f"Streaming - Fetching page {page} with limit {chunk_size}")
+                success, result = db_manager.get_table_data(table_name, limit=chunk_size, page=page, filters=filters)
+                if not success:
+                    print(f"Streaming - Error fetching page {page}: {result}")
+                    yield f"Error: {result}\n"
+                    return
+                
+                rows = result['rows']
+                print(f"Streaming - Page {page} returned {len(rows)} rows")
+                if not rows:
+                    print(f"Streaming - No more rows at page {page}, breaking")
+                    break
+                
+                # Process rows
+                chunk_output = StringIO()
+                writer = csv.writer(chunk_output)
+                
+                print(f"Processing {len(rows)} rows in chunk {page}")
+                for i, row in enumerate(rows):
+                    if selected_columns and column_indices:
+                        filtered_row = [row[i] if i < len(row) else None for i in column_indices]
+                        writer.writerow(filtered_row)
+                    else:
+                        writer.writerow(row)
+                    rows_exported += 1
+                    
+                    # Log first few rows for debugging
+                    if rows_exported <= 5:
+                        print(f"Streaming row {rows_exported}: {row[:3]}...")  # Show first 3 columns
+                
+                # Yield chunk
+                chunk_data = chunk_output.getvalue()
+                print(f"Streaming - Chunk {page} data length: {len(chunk_data)} characters")
+                if chunk_data:
+                    yield chunk_data
+                    print(f"Streaming - Yielded chunk {page} successfully")
+                else:
+                    print(f"Streaming - WARNING: Chunk {page} is empty!")
+                chunk_output.close()
+                
+                page += 1
+                
+                # Progress logging
+                if rows_exported % 100000 == 0:
+                    print(f"Exported {rows_exported} rows so far...")
+            
+            print(f"Streaming export completed. Total rows exported: {rows_exported}")
+        
+        # Create filename
+        filename = _generate_export_filename(table_name, filters, selected_columns, total_rows)
+        
+        return Response(
+            generate_csv(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename={filename}',
+                'Content-Type': 'text/csv; charset=utf-8',
+                'Transfer-Encoding': 'chunked'
+            }
+        )
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error in simple streaming export: {str(e)}'
+        })
+
+def _stream_csv_export(table_name, filters, selected_columns, total_rows, chunk_size):
+    """Stream CSV export for large datasets with optimized memory usage"""
+    try:
+        from flask import Response
+        import csv
+        import gzip
+        from io import BytesIO, StringIO
+        
+        def generate_csv():
+            # Get column information first (optimized)
+            success, all_columns = db_manager.get_table_columns(table_name)
+            if not success:
+                yield f"Error: {all_columns}\n"
+                return
+            
+            # Determine export columns
+            if selected_columns:
+                column_indices = []
+                export_columns = []
+                
+                for col in selected_columns:
+                    if col in all_columns:
+                        idx = all_columns.index(col)
+                        column_indices.append(idx)
+                        export_columns.append(col)
+                
+                if not column_indices:
+                    yield "Error: No valid columns selected for export\n"
+                    return
+            else:
+                export_columns = all_columns
+                column_indices = list(range(len(all_columns)))
+            
+            # Write headers first
+            header_output = StringIO()
+            writer = csv.writer(header_output)
+            writer.writerow(export_columns)
+            yield header_output.getvalue()
+            header_output.close()
+            
+            # Use server-side cursor for memory-efficient streaming
+            yield from _stream_data_with_cursor(table_name, filters, selected_columns, column_indices, chunk_size)
+        
+        # Create filename with filter info
+        filename = _generate_export_filename(table_name, filters, selected_columns, total_rows)
+        
+        # For now, disable compression to avoid browser issues
+        # TODO: Re-enable compression with proper browser detection
+        use_compression = False
+        
+        if use_compression:
+            def generate_compressed_csv():
+                gzip_buffer = BytesIO()
+                with gzip.GzipFile(fileobj=gzip_buffer, mode='wb') as gz_file:
+                    for chunk in generate_csv():
+                        gz_file.write(chunk.encode('utf-8'))
+                    gz_file.flush()
+                    gzip_buffer.seek(0)
+                    while True:
+                        data = gzip_buffer.read(8192)  # 8KB chunks
+                        if not data:
+                            break
+                        yield data
+            
+            return Response(
+                generate_compressed_csv(),
+                mimetype='application/gzip',
+                headers={
+                    'Content-Disposition': f'attachment; filename={filename}.gz',
+                    'Content-Type': 'application/gzip',
+                    'Content-Encoding': 'gzip',
+                    'Transfer-Encoding': 'chunked'
+                }
+            )
+        else:
+            return Response(
+                generate_csv(),
+                mimetype='text/csv',
+                headers={
+                    'Content-Disposition': f'attachment; filename={filename}',
+                    'Content-Type': 'text/csv; charset=utf-8',
+                    'Transfer-Encoding': 'chunked'
+                }
+            )
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error in streaming export: {str(e)}'
+        })
+
+def _stream_data_with_cursor(table_name, filters, selected_columns, column_indices, chunk_size):
+    """Stream data using server-side cursor for memory efficiency with query optimization"""
+    cursor = None
+    chunk_buffer = None
+    
+    try:
+        import csv
+        from io import StringIO
+        
+        # Get database connection
+        if not db_manager.connection:
+            yield "Error: No database connection\n"
+            return
+        
+        # Ensure connection is healthy
+        if not db_manager._ensure_connection_health():
+            yield "Error: Database connection is not healthy\n"
+            return
+        
+        cursor = db_manager.connection.cursor()
+        
+        # Build optimized query with server-side cursor
+        from psycopg2 import sql
+        
+        # Build WHERE clause from filters
+        where_clause, params = db_manager._build_where_clause(filters) if filters else ("", [])
+        
+        # Create optimized query with column selection if possible
+        if selected_columns and column_indices:
+            # Build column list for SELECT clause
+            columns_sql = sql.SQL(', ').join([sql.Identifier(col) for col in selected_columns])
+            
+            if where_clause:
+                query = sql.SQL("SELECT {} FROM {} WHERE {}").format(
+                    columns_sql,
+                    sql.Identifier(table_name), 
+                    sql.SQL(where_clause)
+                )
+            else:
+                query = sql.SQL("SELECT {} FROM {}").format(
+                    columns_sql,
+                    sql.Identifier(table_name)
+                )
+        else:
+            # Select all columns
+            if where_clause:
+                query = sql.SQL("SELECT * FROM {} WHERE {}").format(
+                    sql.Identifier(table_name), 
+                    sql.SQL(where_clause)
+                )
+            else:
+                query = sql.SQL("SELECT * FROM {}").format(sql.Identifier(table_name))
+        
+        # Use a regular cursor for better compatibility
+        # Named cursors require transactions which can cause issues with streaming
+        try:
+            cursor = db_manager.connection.cursor()
+        except Exception as e:
+            yield f"Error creating cursor: {str(e)}\n"
+            return
+        
+        # Execute query with server-side cursor
+        try:
+            print(f"Executing query: {query}")
+            print(f"Query params: {params}")
+            print(f"Table name: {table_name}")
+            print(f"Selected columns: {selected_columns}")
+            print(f"Column indices: {column_indices}")
+            print(f"Where clause: {where_clause}")
+            cursor.execute(query, params)
+            print("Query executed successfully")
+        except Exception as e:
+            print(f"Query execution failed: {str(e)}")
+            print(f"Error type: {type(e)}")
+            yield f"Error executing query: {str(e)}\n"
+            return
+        
+        # Process data in chunks
+        rows_processed = 0
+        chunk_buffer = StringIO()
+        writer = csv.writer(chunk_buffer)
+        
+        print(f"Streaming export started for table {table_name}, chunk_size: {chunk_size}")
+        
+        while True:
+            rows = cursor.fetchmany(chunk_size)
+            if not rows:
+                break
+            
+            # Process each row
+            for row in rows:
+                if selected_columns and column_indices:
+                    # Data is already filtered at database level
+                    writer.writerow(row)
+                else:
+                    writer.writerow(row)
+                
+                rows_processed += 1
+            
+            # Yield chunk and reset buffer
+            chunk_data = chunk_buffer.getvalue()
+            if chunk_data:
+                yield chunk_data
+                chunk_buffer.seek(0)
+                chunk_buffer.truncate(0)
+                print(f"Exported {rows_processed} rows so far...")
+        
+        # Yield any remaining data
+        final_data = chunk_buffer.getvalue()
+        if final_data:
+            yield final_data
+        
+        print(f"Streaming export completed. Total rows exported: {rows_processed}")
+            
+    except Exception as e:
+        yield f"Error streaming data: {str(e)}\n"
+    finally:
+        if cursor:
+            cursor.close()
+        if chunk_buffer:
+            chunk_buffer.close()
+
+def _generate_export_cache_key(table_name, filters, selected_columns):
+    """Generate a cache key for export data"""
+    import hashlib
+    import json
+    
+    # Create a hash of the export parameters
+    cache_data = {
+        'table': table_name,
+        'filters': filters,
+        'columns': selected_columns
+    }
+    
+    cache_string = json.dumps(cache_data, sort_keys=True)
+    return hashlib.md5(cache_string.encode()).hexdigest()
+
+def _get_cached_export(cache_key):
+    """Get cached export data"""
+    try:
+        # Use the platform cache manager
+        cache_data = cache_manager.get(f"export_{cache_key}")
+        if cache_data:
+            from flask import Response
+            return Response(
+                cache_data['content'],
+                mimetype='text/csv',
+                headers={
+                    'Content-Disposition': f'attachment; filename={cache_data["filename"]}',
+                    'Content-Type': 'text/csv; charset=utf-8',
+                    'X-Cache': 'HIT'
+                }
+            )
+    except Exception as e:
+        print(f"Error getting cached export: {e}")
+    return None
+
+def _cache_export(cache_key, response, total_rows):
+    """Cache export data for future use"""
+    try:
+        # Only cache smaller exports (< 1MB)
+        if total_rows < 5000 and hasattr(response, 'data'):
+            cache_data = {
+                'content': response.data,
+                'filename': response.headers.get('Content-Disposition', 'export.csv'),
+                'total_rows': total_rows,
+                'cached_at': datetime.now().isoformat()
+            }
+            # Cache for 1 hour
+            cache_manager.set(f"export_{cache_key}", cache_data, ttl=3600)
+            print(f"Cached export for key: {cache_key}")
+    except Exception as e:
+        print(f"Error caching export: {e}")
+
+def _generate_export_filename(table_name, filters, selected_columns, total_rows):
+    """Generate a descriptive filename for the export"""
+    import re
+    from datetime import datetime
+    
+    # Base filename
+    filename_parts = [table_name]
+    
+    # Add filter indicator
+    if filters and filters.get('groups'):
+        condition_count = sum(len(group.get('conditions', [])) for group in filters.get('groups', []))
+        if condition_count > 0:
+            filename_parts.append(f"filtered_{condition_count}filters")
+    
+    # Add column count
+    if selected_columns:
+        filename_parts.append(f"{len(selected_columns)}cols")
+    
+    # Add row count
+    filename_parts.append(f"{total_rows}rows")
+    
+    # Add timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename_parts.append(timestamp)
+    
+    # Join and clean filename
+    filename = "_".join(filename_parts) + ".csv"
+    
+    # Remove any invalid characters
+    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+    
+    return filename
+
+@app.route('/databases')
+@login_required
+def databases():
+    """Database management page"""
+    stored_databases = db_storage.load_databases()
+    current_db_id = db_storage.get_current_database_id()
+    current_user = get_current_user()
+    
+    return render_template('databases.html', 
+                         databases=stored_databases,
+                         current_database_id=current_db_id,
+                         current_user=current_user)
+
+@app.route('/databases/add', methods=['GET', 'POST'])
+@login_required
+def add_database():
+    """Add new database configuration"""
+    if request.method == 'POST':
+        name = request.form.get('name')
+        host = request.form.get('host')
+        port = request.form.get('port', 5432)
+        database = request.form.get('database')
+        description = request.form.get('description', '')
+        
+        if not all([name, host, database]):
+            flash('Name, host, and database are required fields', 'error')
+            return redirect(url_for('add_database'))
+        
+        success = db_storage.add_database(name, host, port, database, description)
+        
+        if success:
+            flash(f'Database "{name}" added successfully!', 'success')
+            return redirect(url_for('databases'))
+        else:
+            flash('Error adding database configuration', 'error')
+    
+    return render_template('add_database.html')
+
+@app.route('/databases/edit/<db_id>', methods=['GET', 'POST'])
+@login_required
+def edit_database(db_id):
+    """Edit database configuration"""
+    database = db_storage.get_database(db_id)
+    if not database:
+        flash('Database not found', 'error')
+        return redirect(url_for('databases'))
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        host = request.form.get('host')
+        port = request.form.get('port', 5432)
+        db_name = request.form.get('database')
+        description = request.form.get('description', '')
+        
+        if not all([name, host, db_name]):
+            flash('Name, host, and database are required fields', 'error')
+            return render_template('edit_database.html', database=database)
+        
+        success = db_storage.update_database(db_id, name, host, port, db_name, description)
+        
+        if success:
+            flash(f'Database "{name}" updated successfully!', 'success')
+            return redirect(url_for('databases'))
+        else:
+            flash('Error updating database configuration', 'error')
+    
+    return render_template('edit_database.html', database=database)
+
+@app.route('/databases/delete/<db_id>', methods=['POST'])
+@login_required
+def delete_database(db_id):
+    """Delete database configuration"""
+    database = db_storage.get_database(db_id)
+    if not database:
+        flash('Database not found', 'error')
+        return redirect(url_for('databases'))
+    
+    success = db_storage.delete_database(db_id)
+    
+    if success:
+        flash(f'Database "{database["name"]}" deleted successfully!', 'success')
+        # Clear current database if it was deleted
+        if db_storage.get_current_database_id() == db_id:
+            db_storage.set_current_database(None)
+    else:
+        flash('Error deleting database configuration', 'error')
+    
+    return redirect(url_for('databases'))
+
+@app.route('/databases/connect/<db_id>', methods=['POST'])
+@login_required
+def connect_to_database(db_id):
+    """Connect to a stored database"""
+    database = db_storage.get_database(db_id)
+    if not database:
+        return jsonify({'success': False, 'error': 'Database not found'})
+    
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    if not username or not password:
+        return jsonify({'success': False, 'error': 'Username and password are required'})
+    
+    # Create connection config
+    config = {
+        'host': database['host'],
+        'port': database['port'],
+        'database': database['database'],
+        'user': username,
+        'password': password
+    }
+    
+    # Test the connection
+    success, message = db_manager.test_connection(config)
+    
+    if success:
+        # Update database manager config and connect
+        db_manager.config = config
+        connect_success, connect_message = db_manager.connect(config)
+        
+        if connect_success:
+            # Update storage records
+            db_storage.set_current_database(db_id)
+            db_storage.update_last_connected(db_id)
+            
+            return jsonify({
+                'success': True, 
+                'message': f'Connected to {database["name"]} successfully!',
+                'redirect': url_for('index')
+            })
+        else:
+            return jsonify({'success': False, 'error': f'Connection failed: {connect_message}'})
+    else:
+        return jsonify({'success': False, 'error': f'Connection test failed: {message}'})
+
+@app.route('/databases/test/<db_id>', methods=['POST'])
+@login_required
+def test_database_connection(db_id):
+    """Test connection to a stored database"""
+    database = db_storage.get_database(db_id)
+    if not database:
+        return jsonify({'success': False, 'error': 'Database not found'})
+    
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    if not username or not password:
+        return jsonify({'success': False, 'error': 'Username and password are required'})
+    
+    # Create connection config
+    config = {
+        'host': database['host'],
+        'port': database['port'],
+        'database': database['database'],
+        'user': username,
+        'password': password
+    }
+    
+    # Test the connection
+    success, message = db_manager.test_connection(config)
+    
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
+@app.route('/databases/disconnect', methods=['POST'])
+@login_required
+def disconnect_database():
+    """Disconnect from current database"""
+    try:
+        # Close the current database connection
+        db_manager.close()
+        
+        # Clear the current database setting
+        db_storage.set_current_database(None)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Disconnected successfully'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error disconnecting: {str(e)}'
+        })
+
+# Authentication routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login page (optimized)"""
+    if 'user_id' in session:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        start_time = time.time()  # Performance monitoring
+        
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        remember_me = request.form.get('remember_me') == 'on'
+        
+        if not username or not password:
+            flash('Please enter both username and password.', 'error')
+            return render_template('auth/login.html')
+        
+        # Optimized authentication
+        success, user = user_manager.authenticate_user(username, password)
+        
+        if success:
+            # Set session data efficiently
+            session.update({
+                'user_id': user['id'],
+                'username': user['username'],
+                'login_time': time.time()
+            })
+            
+            # Handle remember me functionality
+            if remember_me:
+                session.permanent = True
+                print(f"Remember me enabled for user {username}. Session will last 30 days.")
+            else:
+                session.permanent = False
+                print(f"Session will expire when browser closes for user {username}.")
+            
+            # Performance logging
+            login_time = time.time() - start_time
+            print(f"Login completed in {login_time:.3f} seconds for user {username}")
+            
+            flash(f'Welcome back, {user["full_name"] or user["username"]}!', 'success')
+            
+            # Redirect to next page or dashboard
+            next_page = request.args.get('next')
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid username or password.', 'error')
+    
+    return render_template('auth/login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """User registration page"""
+    if 'user_id' in session:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        full_name = request.form.get('full_name', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Validation
+        if not all([username, email, password, confirm_password]):
+            flash('All fields are required.', 'error')
+            return render_template('auth/register.html')
+        
+        if len(username) < 3:
+            flash('Username must be at least 3 characters long.', 'error')
+            return render_template('auth/register.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return render_template('auth/register.html')
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('auth/register.html')
+        
+        if '@' not in email or '.' not in email:
+            flash('Please enter a valid email address.', 'error')
+            return render_template('auth/register.html')
+        
+        success, message = user_manager.register_user(username, email, password, full_name)
+        
+        if success:
+            flash('Registration successful! Please log in.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash(message, 'error')
+    
+    return render_template('auth/register.html')
+
+@app.route('/logout')
+def logout():
+    """User logout"""
+    username = session.get('username', 'User')
+    
+    # Clear database connection and reset to default config
+    try:
+        db_manager.close()
+        # Reset to default config (from environment variables)
+        db_manager.config = {
+            'host': os.getenv('DB_HOST', 'localhost'),
+            'port': int(os.getenv('DB_PORT', 5432)),
+            'database': os.getenv('DB_NAME', ''),
+            'user': os.getenv('DB_USER', ''),
+            'password': os.getenv('DB_PASSWORD', '')
+        }
+        # Clear current database setting
+        db_storage.set_current_database(None)
+    except Exception as e:
+        print(f"Error during logout cleanup: {e}")
+    
+    session.clear()
+    flash(f'Goodbye, {username}! You have been logged out successfully.', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/profile')
+@login_required
+def profile():
+    """User profile page"""
+    current_user = get_current_user()
+    return render_template('auth/profile.html', current_user=current_user)
+
+@app.route('/visualizations')
+@login_required
+def visualizations():
+    """Data visualization dashboard page"""
+    current_user = get_current_user()
+    
+    # Check if database is connected
+    if not db_manager.connection:
+        # Try to connect with existing config
+        success, message = db_manager.connect()
+        if not success:
+            flash("Please connect to a database first to view visualizations.", "warning")
+            return redirect(url_for('databases'))
+    
+    return render_template('visualizations.html', current_user=current_user)
+
 @app.route('/api/visualizations/dashboard')
 @login_required
 def api_visualization_dashboard():
     """API endpoint to get dashboard visualization data"""
     # Check if we have a connection
     if not db_manager.connection:
-        # Try to connect with stored database config
-        current_db_id = db_storage.get_current_database_id()
-        if current_db_id:
-            current_db = db_storage.get_database(current_db_id)
-            if current_db:
-                if 'user' in current_db and 'password' in current_db:
-                    config = {
-                        'host': current_db['host'],
-                        'port': current_db['port'],
-                        'database': current_db['database'],
-                        'user': current_db['user'],
-                        'password': current_db['password']
-                    }
-                else:
-                    config = {
-                        'host': current_db['host'],
-                        'port': current_db['port'],
-                        'database': current_db['database'],
-                        'user': os.getenv('DB_USER', 'postgres'),
-                        'password': os.getenv('DB_PASSWORD', '')
-                    }
-                connect_success, connect_message = db_manager.connect(config)
-            else:
-                connect_success, connect_message = False, "No stored database configuration found"
-        else:
-            connect_success, connect_message = False, "No database selected"
-        
+        # Try to connect with existing config
+        connect_success, connect_message = db_manager.connect()
         if not connect_success:
             return jsonify({
                 'success': False, 
@@ -3947,15 +3448,11 @@ def api_visualization_dashboard():
 @login_required
 def api_table_analysis(table_name):
     """API endpoint to get detailed table column analysis"""
-    try:
-        # Get table statistics
-        success, result = db_manager.get_bulk_table_stats_fast([table_name], 1)
-        if success and result:
-            return jsonify({'success': True, 'data': result[0] if result else {}})
-        else:
-            return jsonify({'success': False, 'error': result})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    success, result = db_manager.get_table_column_analysis(table_name)
+    if success:
+        return jsonify({'success': True, 'data': result})
+    else:
+        return jsonify({'success': False, 'error': result})
 
 @app.route('/api/visualizations/table/<table_name>/sample')
 @login_required
@@ -3999,138 +3496,6 @@ def api_tables_comparison():
             return jsonify({'success': True, 'data': result})
         else:
             return jsonify({'success': False, 'error': result})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/visualizations/geo/<table_name>')
-@login_required
-def api_geo_chart_data(table_name):
-    """API endpoint to get geographic data for mapping"""
-    try:
-        if not db_manager.connection:
-            return jsonify({'success': False, 'error': 'No database connection'})
-        
-        cursor = db_manager.connection.cursor()
-        cursor.execute("""
-            SELECT 
-                column_name,
-                data_type,
-                is_nullable,
-                column_default
-            FROM information_schema.columns 
-            WHERE table_name = %s AND table_schema = 'public'
-            ORDER BY ordinal_position;
-        """, [table_name])
-        
-        columns = []
-        for row in cursor.fetchall():
-            column_name, data_type, is_nullable, column_default = row
-            
-            # Categorize data types for geographic suitability
-            if data_type in ['integer', 'bigint', 'smallint', 'numeric', 'real', 'double precision', 'decimal']:
-                category = 'numeric'
-            elif data_type in ['character varying', 'varchar', 'text', 'char']:
-                category = 'text'
-            elif data_type in ['date', 'timestamp', 'timestamp with time zone', 'timestamp without time zone']:
-                category = 'datetime'
-            elif data_type in ['boolean']:
-                category = 'boolean'
-            else:
-                category = 'other'
-            
-            columns.append({
-                'name': column_name,
-                'type': data_type,
-                'category': category,
-                'nullable': is_nullable == 'YES',
-                'default': column_default
-            })
-        
-        cursor.close()
-        
-        # Find potential location columns (text types with geographic keywords)
-        location_columns = []
-        value_columns = []
-        
-        for col in columns:
-            col_lower = col['name'].lower()
-            if col['category'] == 'text' and any(keyword in col_lower for keyword in ['location', 'address', 'city', 'country', 'state', 'region', 'lat', 'lng', 'longitude', 'latitude', 'place', 'area', 'zone', 'district']):
-                location_columns.append(col)
-            elif col['category'] == 'numeric':
-                value_columns.append(col)
-        
-        return jsonify({
-            'success': True,
-            'location_columns': location_columns,
-            'value_columns': value_columns,
-            'all_columns': columns
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/visualizations/geographic/data', methods=['POST'])
-@login_required
-def api_geographic_data():
-    """API endpoint to get geographic data for mapping with filtering support"""
-    try:
-        data = request.get_json()
-        table_name = data.get('table_name')
-        location_column = data.get('location_column')
-        value_column = data.get('value_column')
-        aggregation = data.get('aggregation', 'count')
-        filters = data.get('filters')
-        
-        if not table_name or not location_column:
-            return jsonify({'success': False, 'error': 'Table name and location column are required'})
-        
-        if not db_manager.connection:
-            return jsonify({'success': False, 'error': 'No database connection'})
-        
-        cursor = db_manager.connection.cursor()
-        
-        # Build WHERE clause from filters
-        where_clause, filter_params = db_manager._build_where_clause(filters) if filters else ("", [])
-        print(f"Geographic chart filters: {filters}")
-        print(f"Generated WHERE clause: {where_clause}")
-        print(f"Filter parameters: {filter_params}")
-        
-        # Build base WHERE conditions
-        base_conditions = [f"{location_column} IS NOT NULL"]
-        query_params = []
-        
-        # Add filter conditions if any
-        if where_clause:
-            base_conditions.append(where_clause)
-            query_params.extend(filter_params)
-        
-        # Add value column condition if needed
-        if value_column and value_column != location_column and aggregation in ['sum', 'avg', 'min', 'max']:
-            base_conditions.append(f"{value_column} IS NOT NULL")
-        
-        # Build query
-        where_sql = " AND ".join(base_conditions)
-        
-        if value_column and value_column != location_column and aggregation in ['sum', 'avg', 'min', 'max']:
-            query = f"SELECT {location_column}, {aggregation.upper()}({value_column}) as value FROM {table_name} WHERE {where_sql} GROUP BY {location_column} ORDER BY value DESC LIMIT 100"
-        else:
-            query = f"SELECT {location_column}, COUNT(*) as value FROM {table_name} WHERE {where_sql} GROUP BY {location_column} ORDER BY value DESC LIMIT 100"
-        
-        # Execute query with parameters
-        if query_params:
-            cursor.execute(query, query_params)
-        else:
-            cursor.execute(query)
-        
-        results = cursor.fetchall()
-        cursor.close()
-        
-        return jsonify({
-            'success': True,
-            'geo_data': [
-                {'location': row[0], 'value': float(row[1]) if row[1] else 0}
-                for row in results
-            ]
-        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -4187,16 +3552,16 @@ def api_custom_chart_columns(table_name):
 @app.route('/api/visualizations/custom/data', methods=['POST'])
 @login_required
 def api_custom_chart_data():
-    """API endpoint to get custom chart data"""
+    """API endpoint to get data for custom chart creation"""
     try:
         data = request.get_json()
         table_name = data.get('table_name')
         x_column = data.get('x_column')
         y_column = data.get('y_column')
-        chart_type = data.get('chart_type', 'bar')
+        chart_type = data.get('chart_type')
         aggregation = data.get('aggregation', 'count')
         limit = data.get('limit', 100)
-        filters = data.get('filters')
+        filters = data.get('filters', {'logic': 'AND', 'groups': []})
         
         if not table_name or not x_column:
             return jsonify({'success': False, 'error': 'Table name and X column are required'})
@@ -4207,115 +3572,1180 @@ def api_custom_chart_data():
         cursor = db_manager.connection.cursor()
         
         # Build WHERE clause from filters
-        where_clause, filter_params = db_manager._build_where_clause(filters) if filters else ("", [])
-        print(f"Custom chart filters: {filters}")
-        print(f"Generated WHERE clause: {where_clause}")
-        print(f"Filter parameters: {filter_params}")
+        where_clause, filter_params = db_manager._build_where_clause(filters)
         
         # Build base WHERE conditions
-        base_conditions = [f"{x_column} IS NOT NULL"]
+        base_conditions = [sql.SQL("{} IS NOT NULL").format(sql.Identifier(x_column))]
         query_params = []
         
         # Add filter conditions if any
         if where_clause:
-            base_conditions.append(where_clause)
+            base_conditions.append(sql.SQL(where_clause))
             query_params.extend(filter_params)
         
-        # Determine the appropriate query based on the scenario
-        if x_column == y_column or not y_column:
-            # Same column for X and Y, or no Y column - use count aggregation
-            where_sql = " AND ".join(base_conditions)
-            query = f"SELECT {x_column}, COUNT(*) as count FROM {table_name} WHERE {where_sql} GROUP BY {x_column} ORDER BY count DESC LIMIT {limit}"
-            is_count_query = True
-        elif chart_type in ['pie', 'doughnut']:
-            # Pie/doughnut charts always use count
-            where_sql = " AND ".join(base_conditions)
-            query = f"SELECT {x_column}, COUNT(*) as count FROM {table_name} WHERE {where_sql} GROUP BY {x_column} ORDER BY count DESC LIMIT {limit}"
-            is_count_query = True
+        # Build query based on chart type and aggregation
+        if chart_type in ['pie', 'doughnut'] or aggregation == 'count':
+            # For categorical charts or count aggregation
+            if y_column and y_column != x_column and aggregation in ['sum', 'avg', 'min', 'max']:
+                # Add y_column NOT NULL condition
+                base_conditions.append(sql.SQL("{} IS NOT NULL").format(sql.Identifier(y_column)))
+                
+                query = sql.SQL("""
+                    SELECT {}, {}({}) as value
+                    FROM {} 
+                    WHERE {}
+                    GROUP BY {}
+                    ORDER BY value DESC
+                    LIMIT %s
+                """).format(
+                    sql.Identifier(x_column),
+                    sql.SQL(aggregation.upper()),
+                    sql.Identifier(y_column),
+                    sql.Identifier(table_name),
+                    sql.SQL(" AND ").join(base_conditions),
+                    sql.Identifier(x_column)
+                )
+            else:
+                # Count aggregation
+                query = sql.SQL("""
+                    SELECT {}, COUNT(*) as value
+                    FROM {} 
+                    WHERE {}
+                    GROUP BY {}
+                    ORDER BY value DESC
+                    LIMIT %s
+                """).format(
+                    sql.Identifier(x_column),
+                    sql.Identifier(table_name),
+                    sql.SQL(" AND ").join(base_conditions),
+                    sql.Identifier(x_column)
+                )
         else:
-            # Different X and Y columns - use Y column as value
-            base_conditions.append(f"{y_column} IS NOT NULL")
-            where_sql = " AND ".join(base_conditions)
-            query = f"SELECT {x_column}, {y_column} FROM {table_name} WHERE {where_sql} ORDER BY {y_column} DESC LIMIT {limit}"
-            is_count_query = False
+            # For scatter plots or line charts with two columns
+            if y_column and y_column != x_column:
+                # Add y_column NOT NULL condition
+                base_conditions.append(sql.SQL("{} IS NOT NULL").format(sql.Identifier(y_column)))
+                
+                query = sql.SQL("""
+                    SELECT {}, {}
+                    FROM {} 
+                    WHERE {}
+                    ORDER BY {} 
+                    LIMIT %s
+                """).format(
+                    sql.Identifier(x_column),
+                    sql.Identifier(y_column),
+                    sql.Identifier(table_name),
+                    sql.SQL(" AND ").join(base_conditions),
+                    sql.Identifier(x_column)
+                )
+            else:
+                # Single column analysis
+                query = sql.SQL("""
+                    SELECT {}, COUNT(*) as value
+                    FROM {} 
+                    WHERE {}
+                    GROUP BY {}
+                    ORDER BY {} 
+                    LIMIT %s
+                """).format(
+                    sql.Identifier(x_column),
+                    sql.Identifier(table_name),
+                    sql.SQL(" AND ").join(base_conditions),
+                    sql.Identifier(x_column),
+                    sql.Identifier(x_column)
+                )
         
-        # Execute query with parameters
-        if query_params:
-            cursor.execute(query, query_params)
-        else:
-            cursor.execute(query)
-        
+        # Execute query with filter parameters + limit
+        query_params.append(limit)
+        cursor.execute(query, query_params)
         results = cursor.fetchall()
-        cursor.close()
         
-        # Process results based on query type
-        if is_count_query:
-            # For count queries, the second column is always a count (integer)
-            data_points = [
-                {'x': str(row[0]) if row[0] is not None else 'NULL', 'y': int(row[1]) if row[1] is not None else 0}
-                for row in results
-            ]
+        # Format data for Chart.js
+        if len(results) > 0 and len(results[0]) >= 2:
+            # Two column data (x_column, value)
+            chart_data = {
+                'labels': [str(row[0]) for row in results],
+                'datasets': [{
+                    'label': f'{aggregation.title()} of {y_column or x_column}',
+                    'data': [float(row[1]) if row[1] is not None else 0 for row in results]
+                }]
+            }
+        elif len(results) > 0 and len(results[0]) == 1:
+            # Single column data (count only)
+            chart_data = {
+                'labels': [str(row[0]) for row in results],
+                'datasets': [{
+                    'label': f'Count of {x_column}',
+                    'data': [1 for row in results]  # Each row represents 1 occurrence
+                }]
+            }
         else:
-            # For value queries, try to convert Y column to numeric, fallback to count
-            data_points = []
-            for row in results:
-                x_val = str(row[0]) if row[0] is not None else 'NULL'
-                y_val = row[1] if len(row) > 1 and row[1] is not None else 0
+            # No data
+            chart_data = {
+                'labels': [],
+                'datasets': [{
+                    'label': f'{aggregation.title()} of {y_column or x_column}',
+                    'data': []
+                }]
+            }
+        
+        cursor.close()
+        return jsonify({'success': True, 'chart_data': chart_data, 'total_rows': len(results)})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/visualizations/geo/<table_name>')
+@login_required
+def api_geo_chart_data(table_name):
+    """API endpoint to get geographic data for a specific table"""
+    try:
+        if not db_manager.connection:
+            return jsonify({'success': False, 'error': 'No database connection'})
+        
+        cursor = db_manager.connection.cursor()
+        
+        # Get table columns to find potential location and value columns
+        cursor.execute("""
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = %s 
+            ORDER BY ordinal_position
+        """, (table_name,))
+        
+        columns = cursor.fetchall()
+        
+        if not columns:
+            return jsonify({'success': False, 'error': f'Table {table_name} not found or has no columns'})
+        
+        # Find potential location columns (text/varchar types)
+        location_columns = []
+        value_columns = []
+        
+        print(f"DEBUG: Processing columns for table {table_name}")
+        for col_name, col_type in columns:
+            print(f"DEBUG: Column {col_name} has type {col_type}")
+            if col_type in ['text', 'varchar', 'character varying', 'char']:
+                location_columns.append({
+                    'name': col_name,
+                    'type': col_type,
+                    'category': 'location'
+                })
+                print(f"DEBUG: Added {col_name} as location column")
+            elif col_type in ['integer', 'bigint', 'smallint', 'numeric', 'decimal', 'real', 'double precision', 'float', 'float4', 'float8', 'money', 'serial', 'bigserial']:
+                value_columns.append({
+                    'name': col_name,
+                    'type': col_type,
+                    'category': 'numeric'
+                })
+                print(f"DEBUG: Added {col_name} as value column")
+            else:
+                print(f"DEBUG: Column {col_name} with type {col_type} not categorized")
+        
+        print(f"DEBUG: Found {len(location_columns)} location columns and {len(value_columns)} value columns")
+        
+        # If we have location columns, try to get sample data
+        geo_data = []
+        if location_columns:
+            # Use the first location column as default
+            location_col = location_columns[0]['name']
+            
+            # Try to get sample geographic data
+            try:
+                cursor.execute(f"""
+                    SELECT {location_col}, COUNT(*) as count
+                    FROM {table_name}
+                    WHERE {location_col} IS NOT NULL
+                    GROUP BY {location_col}
+                    ORDER BY count DESC
+                    LIMIT 20
+                """)
                 
-                # Try to convert to numeric, fallback to 0 if not possible
-                try:
-                    if isinstance(y_val, (int, float)):
-                        y_numeric = float(y_val)
-                    else:
-                        y_numeric = float(y_val)
-                except (ValueError, TypeError):
-                    y_numeric = 0
-                
-                data_points.append({'x': x_val, 'y': y_numeric})
+                results = cursor.fetchall()
+                geo_data = [
+                    {
+                        'location': row[0],
+                        'value': row[1],
+                        'display_name': row[0]
+                    }
+                    for row in results
+                ]
+            except Exception as e:
+                print(f"Error getting geographic data: {e}")
+        
+        cursor.close()
         
         return jsonify({
             'success': True,
-            'data': data_points
+            'data': geo_data,
+            'location_columns': location_columns,
+            'value_columns': value_columns,
+            'table_name': table_name
         })
+        
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/visualizations/geographic/data', methods=['POST'])
+@login_required
+def api_geographic_data():
+    """API endpoint to get geographic data for mapping with filtering support"""
+    try:
+        data = request.get_json()
+        table_name = data.get('table_name')
+        location_column = data.get('location_column')
+        value_column = data.get('value_column')
+        aggregation = data.get('aggregation', 'count')
+        filters = data.get('filters', [])
+        
+        if not table_name or not location_column:
+            return jsonify({'success': False, 'error': 'Table name and location column are required'})
+        
+        if not db_manager.connection:
+            return jsonify({'success': False, 'error': 'No database connection'})
+        
+        cursor = db_manager.connection.cursor()
+        
+        # Build WHERE clause with filters
+        where_conditions = [sql.SQL("{} IS NOT NULL").format(sql.Identifier(location_column))]
+        query_params = []
+        
+        # Add value column NOT NULL condition if needed
+        if value_column and value_column != location_column and aggregation in ['sum', 'avg', 'min', 'max']:
+            where_conditions.append(sql.SQL("{} IS NOT NULL").format(sql.Identifier(value_column)))
+        
+        # Process filters
+        for filter_item in filters:
+            column = filter_item.get('column')
+            operator = filter_item.get('operator')
+            value = filter_item.get('value')
+            
+            if not column or not operator:
+                continue
+                
+            if operator == 'IS NULL':
+                where_conditions.append(sql.SQL("{} IS NULL").format(sql.Identifier(column)))
+            elif operator == 'IS NOT NULL':
+                where_conditions.append(sql.SQL("{} IS NOT NULL").format(sql.Identifier(column)))
+            elif operator == 'LIKE':
+                where_conditions.append(sql.SQL("{} LIKE %s").format(sql.Identifier(column)))
+                query_params.append(f'%{value}%')
+            elif operator == 'NOT LIKE':
+                where_conditions.append(sql.SQL("{} NOT LIKE %s").format(sql.Identifier(column)))
+                query_params.append(f'%{value}%')
+            elif operator == 'IN':
+                # Split comma-separated values
+                values = [v.strip() for v in value.split(',') if v.strip()]
+                if values:
+                    placeholders = sql.SQL(', ').join([sql.Placeholder() for _ in values])
+                    where_conditions.append(sql.SQL("{} IN ({})").format(sql.Identifier(column), placeholders))
+                    query_params.extend(values)
+            elif operator in ['=', '!=', '>', '<', '>=', '<=']:
+                where_conditions.append(sql.SQL("{} {} %s").format(sql.Identifier(column), sql.SQL(operator)))
+                query_params.append(value)
+        
+        # Build the complete WHERE clause
+        where_clause = sql.SQL(' AND ').join(where_conditions)
+        
+        # Build query for geographic aggregation
+        if value_column and value_column != location_column and aggregation in ['sum', 'avg', 'min', 'max']:
+            query = sql.SQL("""
+                SELECT {}, {}({}) as value
+                FROM {} 
+                WHERE {}
+                GROUP BY {}
+                ORDER BY value DESC
+            """).format(
+                sql.Identifier(location_column),
+                sql.SQL(aggregation.upper()),
+                sql.Identifier(value_column),
+                sql.Identifier(table_name),
+                where_clause,
+                sql.Identifier(location_column)
+            )
+        else:
+            # Count aggregation
+            query = sql.SQL("""
+                SELECT {}, COUNT(*) as value
+                FROM {} 
+                WHERE {}
+                GROUP BY {}
+                ORDER BY value DESC
+            """).format(
+                sql.Identifier(location_column),
+                sql.Identifier(table_name),
+                where_clause,
+                sql.Identifier(location_column)
+            )
+        
+        cursor.execute(query, query_params)
+        results = cursor.fetchall()
+        
+        # Format data for mapping
+        geo_data = []
+        for row in results:
+            location = str(row[0]).strip().lower()
+            value = float(row[1]) if row[1] is not None else 0
+            
+            geo_data.append({
+                'location': location,
+                'value': value,
+                'display_name': str(row[0])
+            })
+        
+        cursor.close()
+        
+        # Log filter information
+        filter_info = f" with {len(filters)} filters" if filters else " (no filters)"
+        print(f"Geographic data request for {table_name}.{location_column}{filter_info}: {len(geo_data)} locations found")
+        
+        return jsonify({
+            'success': True, 
+            'geo_data': geo_data, 
+            'total_locations': len(geo_data),
+            'filters_applied': len(filters)
+        })
+        
+    except Exception as e:
+        print(f"Error in geographic data API: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/debug/connection')
 @login_required
 def api_debug_connection():
-    """API endpoint for debugging connection status"""
+    """Debug endpoint to check database connection and configuration"""
+    debug_info = {
+        'has_connection': db_manager.connection is not None,
+        'config': {
+            'host': db_manager.config.get('host', 'Not set'),
+            'port': db_manager.config.get('port', 'Not set'),
+            'database': db_manager.config.get('database', 'Not set'),
+            'user': db_manager.config.get('user', 'Not set'),
+            'password': '***' if db_manager.config.get('password') else 'Not set'
+        },
+        'connection_test': None,
+        'tables_test': None
+    }
+    
+    # Test connection
     try:
-        debug_info = {
-            'connection_status': db_manager.connection is not None,
-            'config': db_manager.config if hasattr(db_manager, 'config') else {},
-            'current_database_id': db_storage.get_current_database_id(),
-            'stored_databases': []
+        success, message = db_manager.test_connection()
+        debug_info['connection_test'] = {'success': success, 'message': message}
+    except Exception as e:
+        debug_info['connection_test'] = {'success': False, 'message': str(e)}
+    
+    # Test tables if connection works
+    if debug_info['connection_test']['success']:
+        try:
+            success, result = db_manager.get_tables()
+            debug_info['tables_test'] = {'success': success, 'tables': result if success else result}
+        except Exception as e:
+            debug_info['tables_test'] = {'success': False, 'message': str(e)}
+    
+    return jsonify(debug_info)
+
+# View Configuration API Routes
+@app.route('/api/database/<database_id>/tables')
+@login_required
+def api_get_tables(database_id):
+    """Get tables for a specific database"""
+    try:
+        databases = get_stored_databases()
+        database = next((db for db in databases if db['id'] == database_id), None)
+        
+        if not database:
+            return jsonify({'error': 'Database not found'}), 404
+        
+        # Create temporary db manager for this database
+        temp_manager = DatabaseManager()
+        temp_config = {
+            'host': database['host'],
+            'port': database['port'],
+            'database': database['database'],
+            'user': database.get('user', ''),
+            'password': database.get('password', '')
         }
         
-        # Get stored databases info
-        try:
-            with open('stored_databases.json', 'r') as f:
-                data = json.load(f)
-                debug_info['stored_databases'] = data.get('databases', [])
-        except Exception as e:
-            debug_info['stored_databases_error'] = str(e)
-        
-        # Test connection if available
-        if db_manager.connection:
-            try:
-                cursor = db_manager.connection.cursor()
-                cursor.execute("SELECT 1")
-                cursor.fetchone()
-                cursor.close()
-                debug_info['connection_test'] = 'success'
-            except Exception as e:
-                debug_info['connection_test'] = f'failed: {str(e)}'
+        # Check if this is the currently connected database
+        current_db_id = db_storage.get_current_database_id()
+        if current_db_id == database_id and db_manager.connection:
+            # Use existing connection
+            success, result = db_manager.get_tables()
+            if success:
+                tables = [{'name': table} for table in result]
+                return jsonify(tables)
+            else:
+                return jsonify({'error': result}), 500
         else:
-            debug_info['connection_test'] = 'no connection'
-        
-        return jsonify({'success': True, 'debug_info': debug_info})
+            # For non-current databases, we need credentials
+            return jsonify({'error': 'This database is not currently connected. Please connect to this database first from the Databases page, then try again.'}), 400
+            
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)})
+        return jsonify({'error': str(e)}), 500
+    finally:
+        # Clean up the temporary connection
+        try:
+            if 'temp_manager' in locals() and temp_manager.connection:
+                temp_manager.connection.close()
+        except:
+            pass
+
+@app.route('/api/database/<database_id>/table/<table_name>/columns')
+@login_required
+def api_get_table_columns(database_id, table_name):
+    """Get columns for a specific table"""
+    try:
+        databases = get_stored_databases()
+        database = next((db for db in databases if db['id'] == database_id), None)
+        
+        if not database:
+            return jsonify({'error': 'Database not found'}), 404
+        
+        # Create temporary db manager for this database
+        temp_manager = DatabaseManager()
+        temp_config = {
+            'host': database['host'],
+            'port': database['port'],
+            'database': database['database'],
+            'user': database.get('user', ''),
+            'password': database.get('password', '')
+        }
+        
+        # Check if this is the currently connected database
+        current_db_id = db_storage.get_current_database_id()
+        if current_db_id == database_id and db_manager.connection:
+            # Use existing connection
+            success, result = db_manager.get_columns(table_name)
+            if success:
+                columns = [{'name': col[0], 'type': col[1]} for col in result]
+                return jsonify(columns)
+            else:
+                return jsonify({'error': result}), 500
+        else:
+            # For non-current databases, we need credentials
+            return jsonify({'error': 'This database is not currently connected. Please connect to this database first from the Databases page, then try again.'}), 400
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        # Clean up the temporary connection
+        try:
+            if 'temp_manager' in locals() and temp_manager.connection:
+                temp_manager.connection.close()
+        except:
+            pass
+
+@app.route('/api/view-config/save', methods=['POST'])
+@login_required
+def api_save_view_config():
+    """Save view configuration for a table"""
+    try:
+        data = request.get_json()
+        database_id = data.get('database_id')
+        table_name = data.get('table_name')
+        configuration = data.get('configuration')
+        
+        if not all([database_id, table_name, configuration]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        # Load existing configurations
+        config_file = 'view_configurations.json'
+        try:
+            with open(config_file, 'r') as f:
+                configs = json.load(f)
+        except FileNotFoundError:
+            configs = {}
+        
+        # Save configuration
+        config_key = f"{database_id}_{table_name}"
+        configs[config_key] = {
+            'database_id': database_id,
+            'table_name': table_name,
+            'configuration': configuration,
+            'created_at': time.time(),
+            'updated_at': time.time()
+        }
+        
+        # Write back to file
+        with open(config_file, 'w') as f:
+            json.dump(configs, f, indent=2)
+        
+        return jsonify({'success': True, 'message': 'Configuration saved successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/view-config/load/<database_id>/<table_name>')
+@login_required
+def api_load_view_config(database_id, table_name):
+    """Load view configuration for a table"""
+    try:
+        config_file = 'view_configurations.json'
+        try:
+            with open(config_file, 'r') as f:
+                configs = json.load(f)
+        except FileNotFoundError:
+            return jsonify({'error': 'No configurations found'}), 404
+        
+        config_key = f"{database_id}_{table_name}"
+        if config_key in configs:
+            return jsonify(configs[config_key])
+        else:
+            return jsonify({'error': 'Configuration not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/view-config/status')
+@login_required
+def api_view_config_status():
+    """Get view configuration status and recent configurations"""
+    try:
+        config_file = 'view_configurations.json'
+        try:
+            with open(config_file, 'r') as f:
+                configs = json.load(f)
+        except FileNotFoundError:
+            return jsonify({'success': True, 'configurations': [], 'current_database_id': db_storage.get_current_database_id()})
+        
+        # Get current database to filter relevant configurations
+        current_db_id = db_storage.get_current_database_id()
+        
+        configurations = []
+        for config_key, config_data in configs.items():
+            database_id, table_name = config_key.split('_', 1)
+            
+            # Include all configurations, but mark current database ones
+            config_info = {
+                'table_name': table_name,
+                'database_id': database_id,
+                'database_name': 'Current Database' if database_id == current_db_id else 'Other Database',
+                'updated_at': config_data.get('updated_at', time.time()),
+                'created_at': config_data.get('created_at', time.time()),
+                'is_current': database_id == current_db_id
+            }
+            configurations.append(config_info)
+        
+        # Sort by updated_at (most recent first)
+        configurations.sort(key=lambda x: x['updated_at'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'configurations': configurations,
+            'total_count': len(configurations),
+            'current_db_count': len([c for c in configurations if c['is_current']]),
+            'current_database_id': current_db_id
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# User Management API Endpoints
+@app.route('/api/users/create', methods=['POST'])
+@login_required
+def api_create_user():
+    """API endpoint to create a new user"""
+    try:
+        # Check if current user is logged in
+        current_user_data = get_current_user()
+        if not current_user_data:
+            return jsonify({'success': False, 'error': 'Authentication required'})
+        
+        data = request.get_json()
+        required_fields = ['full_name', 'username', 'email', 'role', 'password']
+        
+        # Validate required fields
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'{field} is required'})
+        
+        # Check if username or email already exists
+        existing_users = user_manager.load_users()
+        for user in existing_users:
+            if user['username'] == data['username']:
+                return jsonify({'success': False, 'error': 'Username already exists'})
+            if user['email'] == data['email']:
+                return jsonify({'success': False, 'error': 'Email already exists'})
+        
+        # Create new user
+        user_id = str(uuid.uuid4())
+        password_hash = user_manager.hash_password(data['password'])
+        
+        new_user = {
+            'id': user_id,
+            'username': data['username'],
+            'email': data['email'],
+            'full_name': data['full_name'],
+            'phone': data.get('phone', ''),
+            'position': data.get('position', ''),
+            'role': data['role'],
+            'password_hash': password_hash,
+            'created_at': datetime.now().isoformat(),
+            'last_login': None,
+            'is_active': True,
+            'avatar': None  # Default to no avatar
+        }
+        
+        # Add user to file
+        existing_users.append(new_user)
+        user_manager.save_users(existing_users)
+        
+        return jsonify({
+            'success': True, 
+            'message': 'User created successfully',
+            'user_id': user_id
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/users/list')
+@login_required
+def api_list_users():
+    """API endpoint to list all users"""
+    try:
+        users = user_manager.load_users()
+        
+        # Remove sensitive data
+        safe_users = []
+        for user in users:
+            safe_user = {
+                'id': user['id'],
+                'username': user['username'],
+                'email': user['email'],
+                'full_name': user['full_name'],
+                'phone': user.get('phone', ''),
+                'position': user.get('position', ''),
+                'role': user.get('role', 'user'),
+                'created_at': user.get('created_at', ''),
+                'last_login': user.get('last_login', ''),
+                'active': user.get('is_active', True)
+            }
+            safe_users.append(safe_user)
+        
+        return jsonify({
+            'success': True,
+            'users': safe_users,
+            'total': len(safe_users)
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/users/<user_id>')
+@login_required
+def api_get_user(user_id):
+    """API endpoint to get a specific user's details"""
+    try:
+        user = user_manager.get_user_by_id(user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'})
+        
+        # Return user data without password hash
+        safe_user = {
+            'id': user['id'],
+            'username': user['username'],
+            'email': user['email'],
+            'full_name': user['full_name'],
+            'phone': user.get('phone', ''),
+            'position': user.get('position', ''),
+            'role': user.get('role', 'user'),
+            'created_at': user.get('created_at', ''),
+            'last_login': user.get('last_login', ''),
+            'is_active': user.get('is_active', True),
+            'avatar': user.get('avatar', None)
+        }
+        
+        return jsonify({
+            'success': True,
+            'user': safe_user
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/users/<user_id>/reset-password', methods=['POST'])
+@login_required
+def api_reset_user_password(user_id):
+    """API endpoint to reset a user's password"""
+    try:
+        data = request.get_json() or {}
+        custom_password = data.get('password')
+        
+        # Determine password to use
+        if custom_password:
+            # Use custom password provided by user
+            new_password = custom_password
+            
+            # Validate password strength
+            if len(new_password) < 8:
+                return jsonify({'success': False, 'error': 'Password must be at least 8 characters long'})
+            
+            # Check for basic complexity
+            has_upper = any(c.isupper() for c in new_password)
+            has_lower = any(c.islower() for c in new_password)
+            has_digit = any(c.isdigit() for c in new_password)
+            
+            if not (has_upper and has_lower and has_digit):
+                return jsonify({'success': False, 'error': 'Password must contain at least one uppercase letter, one lowercase letter, and one digit'})
+                
+        else:
+            # Generate random password if no custom password provided
+            import secrets
+            import string
+            
+            alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+            new_password = ''.join(secrets.choice(alphabet) for i in range(12))
+        
+        # Hash the password
+        password_hash = user_manager.hash_password(new_password)
+        
+        # Update user
+        users = user_manager.load_users()
+        user_found = False
+        username = None
+        
+        for user in users:
+            if user['id'] == user_id:
+                user['password_hash'] = password_hash
+                username = user['username']
+                user_found = True
+                break
+        
+        if not user_found:
+            return jsonify({'success': False, 'error': 'User not found'})
+        
+        user_manager.save_users(users)
+        
+        response_data = {
+            'success': True,
+            'message': f'Password for {username} has been reset successfully'
+        }
+        
+        # Only include the password in response if it was auto-generated
+        if not custom_password:
+            response_data['new_password'] = new_password
+            response_data['message'] = f'Password for {username} has been reset to: {new_password}'
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/users/<user_id>', methods=['PUT'])
+@login_required
+def api_update_user(user_id):
+    """API endpoint to update user information"""
+    try:
+        # Check if current user is logged in
+        current_user_data = get_current_user()
+        if not current_user_data:
+            return jsonify({'success': False, 'error': 'Authentication required'})
+        
+        data = request.get_json()
+        required_fields = ['full_name', 'username', 'email', 'role']
+        
+        # Validate required fields
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'{field} is required'})
+        
+        users = user_manager.load_users()
+        user_found = False
+        
+        # Find and update user
+        for user in users:
+            if user['id'] == user_id:
+                user_found = True
+                
+                # Check if username or email already exists (excluding current user)
+                for other_user in users:
+                    if other_user['id'] != user_id:
+                        if other_user['username'] == data['username']:
+                            return jsonify({'success': False, 'error': 'Username already exists'})
+                        if other_user['email'] == data['email']:
+                            return jsonify({'success': False, 'error': 'Email already exists'})
+                
+                # Update user information
+                user['full_name'] = data['full_name']
+                user['username'] = data['username']
+                user['email'] = data['email']
+                user['phone'] = data.get('phone', user.get('phone', ''))
+                user['position'] = data.get('position', user.get('position', ''))
+                user['role'] = data['role']
+                user['is_active'] = data.get('is_active', user.get('is_active', True))
+                user['updated_at'] = datetime.now().isoformat()
+                
+                # Update password if provided
+                if data.get('password'):
+                    if len(data['password']) < 6:
+                        return jsonify({'success': False, 'error': 'Password must be at least 6 characters long'})
+                    user['password_hash'] = user_manager.hash_password(data['password'])
+                
+                break
+        
+        if not user_found:
+            return jsonify({'success': False, 'error': 'User not found'})
+        
+        # Save updated users
+        user_manager.save_users(users)
+        
+        return jsonify({
+            'success': True,
+            'message': 'User updated successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/users/<user_id>', methods=['DELETE'])
+@login_required
+def api_delete_user(user_id):
+    """API endpoint to delete a user"""
+    try:
+        # Check if trying to delete self
+        current_user_data = get_current_user()
+        if current_user_data and current_user_data.get('id') == user_id:
+            return jsonify({'success': False, 'error': 'Cannot delete your own account'})
+        
+        users = user_manager.load_users()
+        users = [user for user in users if user['id'] != user_id]
+        
+        user_manager.save_users(users)
+        
+        return jsonify({
+            'success': True,
+            'message': 'User deleted successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/users/export')
+@login_required
+def api_export_users():
+    """API endpoint to export users as CSV"""
+    try:
+        import csv
+        import io
+        
+        users = user_manager.load_users()
+        
+        # Create CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['Full Name', 'Username', 'Email', 'Phone', 'Position', 'Role', 'Created At', 'Last Login', 'Active'])
+        
+        # Write users
+        for user in users:
+            writer.writerow([
+                user['full_name'],
+                user['username'],
+                user['email'],
+                user.get('phone', ''),
+                user.get('position', ''),
+                user.get('role', 'user'),
+                user.get('created_at', ''),
+                user.get('last_login', ''),
+                user.get('is_active', True)
+            ])
+        
+        output.seek(0)
+        
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=users-export.csv'}
+        )
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/emergency-reset-password', methods=['GET', 'POST'])
+def emergency_reset_password():
+    """Emergency password reset for admin access"""
+    if request.method == 'GET':
+        return '''
+        <html>
+        <head><title>Emergency Password Reset</title></head>
+        <body style="font-family: Arial; max-width: 500px; margin: 50px auto; padding: 20px;">
+        <h2>Emergency Password Reset</h2>
+        <form method="POST">
+            <div style="margin: 10px 0;">
+                <label>Username:</label><br>
+                <input type="text" name="username" required style="width: 100%; padding: 8px;">
+            </div>
+            <div style="margin: 10px 0;">
+                <label>New Password:</label><br>
+                <input type="password" name="password" required style="width: 100%; padding: 8px;">
+            </div>
+            <div style="margin: 20px 0;">
+                <button type="submit" style="padding: 10px 20px; background: #007bff; color: white; border: none;">Reset Password</button>
+            </div>
+        </form>
+        </body>
+        </html>
+        '''
+    
+    try:
+        username = request.form.get('username')
+        new_password = request.form.get('password')
+        
+        if not username or not new_password:
+            return "Username and password required", 400
+        
+        # Load users
+        users = user_manager.load_users()
+        user_found = False
+        
+        # Find and update user
+        for user in users:
+            if user['username'].lower() == username.lower():
+                # Use the new secure password hashing
+                user['password_hash'] = user_manager.hash_password(new_password)
+                user_found = True
+                break
+        
+        if not user_found:
+            return f"User '{username}' not found", 404
+        
+        # Save users
+        user_manager.save_users(users)
+        
+        return f'''
+        <html>
+        <body style="font-family: Arial; max-width: 500px; margin: 50px auto; padding: 20px;">
+        <h2>✅ Password Reset Successful</h2>
+        <p>Password for user <strong>{username}</strong> has been reset.</p>
+        <p>You can now <a href="/login">login</a> with the new password.</p>
+        </body>
+        </html>
+        '''
+        
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+
+# Avatar Management API Endpoints
+@app.route('/api/profile/avatar/upload', methods=['POST'])
+@login_required
+def api_upload_avatar():
+    """API endpoint to upload user avatar"""
+    try:
+        current_user_data = get_current_user()
+        if not current_user_data:
+            return jsonify({'success': False, 'error': 'Authentication required'})
+        
+        if 'avatar' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'})
+        
+        file = request.files['avatar']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'})
+        
+        if file and allowed_file(file.filename):
+            # Generate unique filename
+            filename = secure_filename(file.filename)
+            file_extension = filename.rsplit('.', 1)[1].lower()
+            unique_filename = f"{current_user_data['id']}_{uuid.uuid4().hex[:8]}.{file_extension}"
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            
+            # Save file
+            file.save(file_path)
+            
+            # Resize image
+            if resize_image(file_path):
+                # Update user avatar
+                success, message = user_manager.update_user_avatar(current_user_data['id'], f"uploads/avatars/{unique_filename}")
+                if success:
+                    return jsonify({
+                        'success': True, 
+                        'message': 'Avatar uploaded successfully',
+                        'avatar_url': f"/static/uploads/avatars/{unique_filename}"
+                    })
+                else:
+                    # Clean up file if user update failed
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                    return jsonify({'success': False, 'error': message})
+            else:
+                # Clean up file if resize failed
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                return jsonify({'success': False, 'error': 'Failed to process image'})
+        else:
+            return jsonify({'success': False, 'error': 'Invalid file type. Allowed: PNG, JPG, JPEG, GIF, WEBP'})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/profile/avatar/default', methods=['POST'])
+@login_required
+def api_set_default_avatar():
+    """API endpoint to set default avatar"""
+    try:
+        current_user_data = get_current_user()
+        if not current_user_data:
+            return jsonify({'success': False, 'error': 'Authentication required'})
+        
+        data = request.get_json()
+        avatar_id = data.get('avatar_id')
+        
+        if not avatar_id:
+            return jsonify({'success': False, 'error': 'Avatar ID required'})
+        
+        # Validate avatar ID
+        default_avatars = get_default_avatars()
+        valid_avatar = next((avatar for avatar in default_avatars if avatar['id'] == avatar_id), None)
+        
+        if not valid_avatar:
+            return jsonify({'success': False, 'error': 'Invalid avatar ID'})
+        
+        # Update user avatar to default
+        success, message = user_manager.update_user_avatar(current_user_data['id'], avatar_id)
+        if success:
+            return jsonify({
+                'success': True, 
+                'message': 'Default avatar set successfully',
+                'avatar_id': avatar_id
+            })
+        else:
+            return jsonify({'success': False, 'error': message})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/profile/avatar/remove', methods=['POST'])
+@login_required
+def api_remove_avatar():
+    """API endpoint to remove user avatar"""
+    try:
+        current_user_data = get_current_user()
+        if not current_user_data:
+            return jsonify({'success': False, 'error': 'Authentication required'})
+        
+        # Remove current avatar file if it exists and is not a default
+        current_avatar = current_user_data.get('avatar')
+        if current_avatar and not current_avatar.startswith('default-'):
+            avatar_path = os.path.join('static', current_avatar)
+            if os.path.exists(avatar_path):
+                os.remove(avatar_path)
+        
+        # Update user avatar to None
+        success, message = user_manager.update_user_avatar(current_user_data['id'], None)
+        if success:
+            return jsonify({'success': True, 'message': 'Avatar removed successfully'})
+        else:
+            return jsonify({'success': False, 'error': message})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/profile/avatar/defaults')
+@login_required
+def api_get_default_avatars():
+    """API endpoint to get available default avatars"""
+    try:
+        avatars = get_default_avatars()
+        return jsonify({'success': True, 'avatars': avatars})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/performance/login-stats')
+@login_required
+def api_login_performance_stats():
+    """API endpoint to get login performance statistics"""
+    try:
+        stats = {
+            'cache_hit_rate': getattr(user_manager, '_cache_hits', 0) / max(getattr(user_manager, '_cache_requests', 1), 1),
+            'total_users': len(user_manager._users_cache or []),
+            'index_size': len(user_manager._user_index),
+            'cache_ttl': user_manager._cache_ttl,
+            'last_cache_update': user_manager._cache_timestamp
+        }
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/cache/stats')
+@login_required
+def api_cache_stats():
+    """API endpoint to get comprehensive cache statistics"""
+    try:
+        stats = cache_manager.get_stats()
+        return jsonify({
+            'success': True,
+            'cache_stats': stats
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/cache/clear', methods=['POST'])
+@login_required
+def api_clear_cache():
+    """API endpoint to clear cache(s)"""
+    try:
+        data = request.get_json() or {}
+        cache_name = data.get('cache_name')
+        
+        if cache_name:
+            cache_manager.clear(cache_name)
+            message = f"Cache '{cache_name}' cleared successfully"
+        else:
+            cache_manager.clear()
+            message = "All caches cleared successfully"
+        
+        return jsonify({
+            'success': True,
+            'message': message
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/cache/invalidate', methods=['POST'])
+@login_required
+def api_invalidate_cache():
+    """API endpoint to invalidate cache entries by pattern"""
+    try:
+        data = request.get_json() or {}
+        cache_name = data.get('cache_name')
+        pattern = data.get('pattern')
+        
+        if not cache_name or not pattern:
+            return jsonify({
+                'success': False,
+                'error': 'Both cache_name and pattern are required'
+            })
+        
+        removed_count = cache_manager.invalidate_pattern(cache_name, pattern)
+        
+        return jsonify({
+            'success': True,
+            'message': f"Invalidated {removed_count} cache entries matching pattern '{pattern}'",
+            'removed_count': removed_count
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/cache/cleanup', methods=['POST'])
+@login_required
+def api_cleanup_cache():
+    """API endpoint to cleanup expired cache entries"""
+    try:
+        cleaned_count = cache_manager.cleanup_expired()
+        
+        return jsonify({
+            'success': True,
+            'message': f"Cleaned up {cleaned_count} expired cache entries",
+            'cleaned_count': cleaned_count
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
