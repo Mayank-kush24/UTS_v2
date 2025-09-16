@@ -4184,6 +4184,65 @@ def api_custom_chart_columns(table_name):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+@app.route('/api/sql/execute', methods=['POST'])
+@login_required
+def api_sql_execute():
+    """API endpoint to execute custom SQL queries"""
+    try:
+        data = request.get_json()
+        query = data.get('query', '').strip()
+        
+        if not query:
+            return jsonify({'success': False, 'error': 'No query provided'})
+        
+        if not db_manager.connection:
+            return jsonify({'success': False, 'error': 'No database connection'})
+        
+        # Security check - only allow SELECT queries for now
+        query_upper = query.upper().strip()
+        if not query_upper.startswith('SELECT'):
+            return jsonify({'success': False, 'error': 'Only SELECT queries are allowed'})
+        
+        # Check for dangerous keywords
+        dangerous_keywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'TRUNCATE', 'EXEC', 'EXECUTE']
+        for keyword in dangerous_keywords:
+            if keyword in query_upper:
+                return jsonify({'success': False, 'error': f'Query contains forbidden keyword: {keyword}'})
+        
+        cursor = db_manager.connection.cursor()
+        
+        try:
+            # Execute the query
+            cursor.execute(query)
+            results = cursor.fetchall()
+            
+            # Get column names
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            
+            # Convert results to list of dictionaries
+            data_list = []
+            for row in results:
+                row_dict = {}
+                for i, value in enumerate(row):
+                    row_dict[columns[i]] = value
+                data_list.append(row_dict)
+            
+            cursor.close()
+            
+            return jsonify({
+                'success': True,
+                'data': data_list,
+                'columns': columns,
+                'row_count': len(data_list)
+            })
+            
+        except Exception as e:
+            cursor.close()
+            return jsonify({'success': False, 'error': f'Query execution error: {str(e)}'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/visualizations/custom/data', methods=['POST'])
 @login_required
 def api_custom_chart_data():

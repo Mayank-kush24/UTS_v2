@@ -14,23 +14,43 @@
     </div>
 </div>
 
-<!-- Filter Panel -->
-<div class="card mb-4 filter-panel">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0 fw-semibold">
-            <i class="fas fa-filter me-2"></i>Advanced Filters
-            <span id="filterCountBadge" class="badge bg-primary ms-2 d-none">0</span>
-        </h5>
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleFilterPanel()">
-                <i class="fas fa-chevron-down" id="filterToggleIcon"></i>
-                <span id="filterToggleText">Show Filters</span>
-            </button>
-            <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearAllFilters()" id="clearFiltersBtn" disabled>
-                <i class="fas fa-trash me-1"></i>Clear All
-            </button>
-        </div>
+<!-- Main Content Tabs -->
+<div class="card mb-4">
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="data-tab" data-bs-toggle="tab" data-bs-target="#data-panel" type="button" role="tab">
+                    <i class="fas fa-table me-2"></i>Table Data
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sql-tab" data-bs-toggle="tab" data-bs-target="#sql-panel" type="button" role="tab">
+                    <i class="fas fa-code me-2"></i>SQL Query
+                </button>
+            </li>
+        </ul>
     </div>
+    <div class="card-body p-0">
+        <div class="tab-content" id="mainTabContent">
+            <!-- Table Data Tab -->
+            <div class="tab-pane fade show active" id="data-panel" role="tabpanel">
+                <!-- Filter Panel -->
+                <div class="card mb-4 filter-panel">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-semibold">
+                            <i class="fas fa-filter me-2"></i>Advanced Filters
+                            <span id="filterCountBadge" class="badge bg-primary ms-2 d-none">0</span>
+                        </h5>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleFilterPanel()">
+                                <i class="fas fa-chevron-down" id="filterToggleIcon"></i>
+                                <span id="filterToggleText">Show Filters</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearAllFilters()" id="clearFiltersBtn" disabled>
+                                <i class="fas fa-trash me-1"></i>Clear All
+                            </button>
+                        </div>
+                    </div>
     <div class="card-body filter-body" style="display: none;">
         <!-- Filter Builder -->
         <div id="filterBuilder">
@@ -409,6 +429,155 @@
         </div>
     </div>
     {% endif %}
+                </div>
+            </div>
+            
+            <!-- SQL Query Tab -->
+            <div class="tab-pane fade" id="sql-panel" role="tabpanel">
+                <div class="sql-workbench">
+                    <!-- Database Explorer Sidebar -->
+                    <div class="explorer-sidebar">
+                        <div class="explorer-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-database me-2"></i>Database Explorer
+                            </h6>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="refreshExplorer()" title="Refresh">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div class="explorer-content">
+                            <!-- Tables Section -->
+                            <div class="explorer-section">
+                                <div class="explorer-section-header" onclick="toggleExplorerSection('tables')">
+                                    <i class="fas fa-table me-2"></i>Tables
+                                    <i class="fas fa-chevron-down" id="tables-chevron"></i>
+                                </div>
+                                <div class="explorer-section-content" id="tables-content">
+                                    <div class="explorer-search">
+                                        <input type="text" class="form-control form-control-sm" id="tableSearch" placeholder="Search tables...">
+                                    </div>
+                                    <div class="explorer-list" id="tablesList">
+                                        <div class="explorer-item" onclick="selectTable('{{ table_name }}')" draggable="true" ondragstart="dragTable(event, '{{ table_name }}')">
+                                            <i class="fas fa-table me-2"></i>{{ table_name }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Fields Section -->
+                            <div class="explorer-section">
+                                <div class="explorer-section-header" onclick="toggleExplorerSection('fields')">
+                                    <i class="fas fa-columns me-2"></i>Fields
+                                    <i class="fas fa-chevron-down" id="fields-chevron"></i>
+                                </div>
+                                <div class="explorer-section-content" id="fields-content">
+                                    <div class="explorer-search">
+                                        <input type="text" class="form-control form-control-sm" id="fieldSearch" placeholder="Search fields...">
+                                    </div>
+                                    <div class="explorer-list" id="fieldsList">
+                                        {% for column in columns %}
+                                        <div class="explorer-item" onclick="insertField('{{ column }}')" draggable="true" ondragstart="dragField(event, '{{ column }}')">
+                                            <i class="fas fa-columns me-2"></i>{{ column }}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Query History Section -->
+                            <div class="explorer-section">
+                                <div class="explorer-section-header" onclick="toggleExplorerSection('history')">
+                                    <i class="fas fa-history me-2"></i>Query History
+                                    <i class="fas fa-chevron-down" id="history-chevron"></i>
+                                </div>
+                                <div class="explorer-section-content" id="history-content">
+                                    <div class="explorer-list" id="historyList">
+                                        <div class="explorer-empty">
+                                            <small>No queries executed yet</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Main Editor Area -->
+                    <div class="editor-main">
+                        <!-- SQL Editor Toolbar -->
+                        <div class="editor-toolbar">
+                            <div class="toolbar-left">
+                                <button class="btn btn-sm btn-success" onclick="executeSQL()" id="executeSQLBtn">
+                                    <i class="fas fa-play me-1"></i>Execute
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="clearSQL()">
+                                    <i class="fas fa-trash me-1"></i>Clear
+                                </button>
+                                <button class="btn btn-sm btn-outline-info" onclick="formatSQL()">
+                                    <i class="fas fa-magic me-1"></i>Format
+                                </button>
+                                <div class="toolbar-divider"></div>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="saveQuery()">
+                                    <i class="fas fa-save me-1"></i>Save
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="loadQuery()">
+                                    <i class="fas fa-folder-open me-1"></i>Load
+                                </button>
+                            </div>
+                            <div class="toolbar-right">
+                                <span class="toolbar-info" id="editorInfo">Line 1, Column 1</span>
+                            </div>
+                        </div>
+                        
+                        <!-- SQL Editor -->
+                        <div class="sql-editor-wrapper">
+                            <div class="editor-lines" id="editorLines"></div>
+                            <textarea id="sqlEditor" class="sql-editor" placeholder="Enter your SQL query here..." ondrop="dropIntoEditor(event)" ondragover="allowDrop(event)">SELECT * FROM {{ table_name }} LIMIT 100;</textarea>
+                        </div>
+                        
+                        <!-- Query Results -->
+                        <div class="results-panel" id="resultsPanel" style="display: none;">
+                            <div class="results-header">
+                                <div class="results-title">
+                                    <i class="fas fa-table me-2"></i>Query Results
+                                    <span class="results-count" id="resultCount">0 rows</span>
+                                </div>
+                                <div class="results-actions">
+                                    <button class="btn btn-sm btn-outline-success" onclick="exportSQLResults()">
+                                        <i class="fas fa-download me-1"></i>Export
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="copySQLResults()">
+                                        <i class="fas fa-copy me-1"></i>Copy
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleResultsPanel()">
+                                        <i class="fas fa-times me-1"></i>Close
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="results-content">
+                                <div class="results-table-container" id="sqlResultsContainer">
+                                    <!-- Results will be populated here -->
+                                </div>
+                                <div class="results-pagination" id="resultsPagination" style="display: none;">
+                                    <!-- Pagination will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Error Panel -->
+                        <div class="error-panel" id="errorPanel" style="display: none;">
+                            <div class="error-header">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Query Error
+                                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="hideErrorPanel()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="error-content" id="errorMessage"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Quick Filter Modal -->
@@ -629,6 +798,602 @@
 
 {% endblock %}
 
+{% block styles %}
+<style>
+/* SQL Workbench Styles */
+.sql-workbench {
+    display: flex;
+    height: 70vh;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Explorer Sidebar */
+.explorer-sidebar {
+    width: 280px;
+    background: #2d3748;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #4a5568;
+}
+
+.explorer-header {
+    padding: 16px 20px;
+    background: #1a202c;
+    border-bottom: 1px solid #4a5568;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.explorer-header h6 {
+    color: #e2e8f0;
+    font-weight: 600;
+    margin: 0;
+}
+
+.explorer-content {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.explorer-section {
+    border-bottom: 1px solid #4a5568;
+}
+
+.explorer-section:last-child {
+    border-bottom: none;
+}
+
+.explorer-section-header {
+    padding: 12px 20px;
+    background: #2d3748;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.explorer-section-header:hover {
+    background: #4a5568;
+}
+
+.explorer-section-header i.fa-chevron-down {
+    transition: transform 0.2s ease;
+    font-size: 12px;
+}
+
+.explorer-section-header.expanded i.fa-chevron-down {
+    transform: rotate(180deg);
+}
+
+.explorer-section-content {
+    display: none;
+    background: #1a202c;
+}
+
+.explorer-section-content.show {
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 300px;
+    }
+}
+
+.explorer-search {
+    padding: 12px 20px;
+    border-bottom: 1px solid #4a5568;
+}
+
+.explorer-search input {
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    color: #e2e8f0;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    width: 100%;
+}
+
+.explorer-search input:focus {
+    outline: none;
+    border-color: #63b3ed;
+    box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.2);
+}
+
+.explorer-search input::placeholder {
+    color: #a0aec0;
+}
+
+.explorer-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.explorer-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.explorer-list::-webkit-scrollbar-track {
+    background: #1a202c;
+}
+
+.explorer-list::-webkit-scrollbar-thumb {
+    background: #4a5568;
+    border-radius: 3px;
+}
+
+.explorer-item {
+    padding: 8px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #e2e8f0;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #2d3748;
+}
+
+.explorer-item:hover {
+    background: #4a5568;
+    color: #63b3ed;
+}
+
+.explorer-item:last-child {
+    border-bottom: none;
+}
+
+.explorer-item i {
+    width: 16px;
+    text-align: center;
+    margin-right: 8px;
+    font-size: 12px;
+}
+
+.explorer-empty {
+    padding: 20px;
+    text-align: center;
+    color: #a0aec0;
+    font-size: 12px;
+}
+
+/* Main Editor Area */
+.editor-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+}
+
+/* Editor Toolbar */
+.editor-toolbar {
+    background: #f7fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: #e2e8f0;
+    margin: 0 8px;
+}
+
+.toolbar-info {
+    font-size: 12px;
+    color: #718096;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.editor-toolbar .btn {
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 12px;
+    transition: all 0.2s ease;
+}
+
+.editor-toolbar .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* SQL Editor Wrapper */
+.sql-editor-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+    background: #ffffff;
+}
+
+.editor-lines {
+    background: #f7fafc;
+    color: #a0aec0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 16px 8px;
+    border-right: 1px solid #e2e8f0;
+    user-select: none;
+    min-width: 50px;
+    text-align: right;
+}
+
+.sql-editor {
+    flex: 1;
+    border: none;
+    padding: 16px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    background: transparent;
+    color: #2d3748;
+    tab-size: 4;
+}
+
+.sql-editor:focus {
+    background: transparent;
+}
+
+/* Results Panel */
+.results-panel {
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    max-height: 40vh;
+}
+
+.results-header {
+    background: #f7fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.results-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.results-count {
+    background: #3182ce;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-left: 8px;
+}
+
+.results-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.results-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.results-table-container {
+    flex: 1;
+    overflow: auto;
+    background: #ffffff;
+}
+
+.results-table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.results-table-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.results-table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+}
+
+.results-table-container::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}
+
+.results-table-container table {
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.results-table-container th {
+    background: #f7fafc;
+    border-bottom: 2px solid #e2e8f0;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 12px 16px;
+    color: #4a5568;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    text-align: left;
+}
+
+.results-table-container td {
+    font-size: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #2d3748;
+}
+
+.results-table-container tbody tr:hover {
+    background: #f7fafc;
+}
+
+.results-pagination {
+    background: #f7fafc;
+    border-top: 1px solid #e2e8f0;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Error Panel */
+.error-panel {
+    background: #fed7d7;
+    border: 1px solid #feb2b2;
+    border-radius: 4px;
+    margin: 8px 16px;
+}
+
+.error-header {
+    background: #f56565;
+    color: white;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.error-content {
+    padding: 12px;
+    color: #742a2a;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+}
+
+/* Drag and Drop Styles */
+.explorer-item[draggable="true"] {
+    cursor: grab;
+}
+
+.explorer-item[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.sql-editor.drag-over {
+    background: #ebf8ff;
+    border: 2px dashed #3182ce;
+}
+
+/* Loading States */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    margin: auto;
+    border: 2px solid transparent;
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Autocomplete Dropdown */
+.autocomplete-dropdown {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    min-width: 250px;
+}
+
+.autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.2s ease;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+    background: #f7fafc;
+}
+
+.autocomplete-item i {
+    width: 16px;
+    text-align: center;
+    margin-right: 8px;
+    font-size: 12px;
+    color: #718096;
+}
+
+.autocomplete-label {
+    flex: 1;
+    font-size: 13px;
+    color: #2d3748;
+}
+
+.autocomplete-type {
+    font-size: 11px;
+    color: #a0aec0;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+/* History Item Styles */
+.history-item {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-query {
+    font-size: 12px;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-time {
+    font-size: 10px;
+    color: #a0aec0;
+    margin-top: 2px;
+}
+
+/* Enhanced Button Styles */
+.editor-toolbar .btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.editor-toolbar .btn:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.editor-toolbar .btn:hover:before {
+    left: 100%;
+}
+
+/* Syntax Highlighting (Basic) */
+.sql-editor {
+    background: #ffffff;
+    color: #2d3748;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .sql-workbench {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .explorer-sidebar {
+        width: 100%;
+        max-height: 200px;
+    }
+    
+    .editor-main {
+        min-height: 400px;
+    }
+    
+    .results-panel {
+        max-height: 300px;
+    }
+    
+    .autocomplete-dropdown {
+        min-width: 200px;
+    }
+}
+
+@media (max-width: 576px) {
+    .toolbar-left {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .toolbar-divider {
+        display: none;
+    }
+    
+    .results-actions {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .explorer-sidebar {
+        max-height: 150px;
+    }
+    
+    .editor-lines {
+        min-width: 40px;
+        font-size: 12px;
+    }
+    
+    .sql-editor {
+        font-size: 12px;
+    }
+}
+</style>
+{% endblock %}
+
 {% block scripts %}
 <script>
 // Global variables
@@ -637,6 +1402,10 @@ let groupCounter = 0;
 let conditionCounter = 0;
 let tableColumns = {{ (columns | tojson) if columns else '[]' }};
 let currentPage = {{ page }};
+
+// SQL Editor variables
+let sqlResults = [];
+let allTables = [];
 let currentLimit = {{ limit }};
 let currentTableName = {{ table_name | tojson }};
 let currentRowData = {{ (rows | tojson) if rows else '[]' }};
@@ -2318,5 +3087,899 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 1000);
 });
+
+// ==================== SQL EDITOR FUNCTIONS ====================
+
+// Toggle explorer sections
+function toggleExplorerSection(section) {
+    const content = document.getElementById(section + '-section');
+    const chevron = document.getElementById(section + '-chevron');
+    
+    if (content.classList.contains('show')) {
+        content.classList.remove('show');
+        chevron.classList.remove('fa-chevron-up');
+        chevron.classList.add('fa-chevron-down');
+    } else {
+        content.classList.add('show');
+        chevron.classList.remove('fa-chevron-down');
+        chevron.classList.add('fa-chevron-up');
+    }
+}
+
+// Insert field name into SQL editor
+function insertField(fieldName) {
+    const editor = document.getElementById('sqlEditor');
+    const cursorPos = editor.selectionStart;
+    const textBefore = editor.value.substring(0, cursorPos);
+    const textAfter = editor.value.substring(editor.selectionEnd);
+    
+    editor.value = textBefore + fieldName + textAfter;
+    editor.focus();
+    editor.setSelectionRange(cursorPos + fieldName.length, cursorPos + fieldName.length);
+}
+
+// Select table and load its fields
+function selectTable(tableName) {
+    // Update the SQL editor with a basic SELECT query
+    const editor = document.getElementById('sqlEditor');
+    editor.value = `SELECT * FROM ${tableName} LIMIT 100;`;
+    
+    // Load fields for the selected table
+    loadTableFields(tableName);
+}
+
+// Load fields for a specific table
+async function loadTableFields(tableName) {
+    try {
+        const response = await fetch(`/api/visualizations/custom/columns/${tableName}`);
+        const result = await response.json();
+        
+        if (result.success && result.columns) {
+            const fieldsList = document.getElementById('fieldsList');
+            fieldsList.innerHTML = '';
+            
+            result.columns.forEach(column => {
+                const fieldItem = document.createElement('div');
+                fieldItem.className = 'explorer-item';
+                fieldItem.onclick = () => insertField(column.name);
+                fieldItem.innerHTML = `<i class="fas fa-columns me-2"></i>${column.name}`;
+                fieldsList.appendChild(fieldItem);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading table fields:', error);
+    }
+}
+
+// Insert SQL template
+function insertTemplate(templateType) {
+    const editor = document.getElementById('sqlEditor');
+    const currentTable = currentTableName;
+    
+    let template = '';
+    switch (templateType) {
+        case 'select':
+            template = `SELECT * FROM ${currentTable} LIMIT 100;`;
+            break;
+        case 'count':
+            template = `SELECT COUNT(*) as total_count FROM ${currentTable};`;
+            break;
+        case 'join':
+            template = `SELECT t1.*, t2.* 
+FROM ${currentTable} t1
+LEFT JOIN table2 t2 ON t1.id = t2.${currentTable}_id
+LIMIT 100;`;
+            break;
+        case 'group':
+            template = `SELECT column_name, COUNT(*) as count
+FROM ${currentTable}
+GROUP BY column_name
+ORDER BY count DESC;`;
+            break;
+    }
+    
+    editor.value = template;
+    editor.focus();
+}
+
+// Execute SQL query
+async function executeSQL() {
+    const editor = document.getElementById('sqlEditor');
+    const query = editor.value.trim();
+    
+    if (!query) {
+        showSQLError('Please enter a SQL query');
+        return;
+    }
+    
+    const executeBtn = document.getElementById('executeSQLBtn');
+    executeBtn.disabled = true;
+    executeBtn.classList.add('btn-loading');
+    executeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Executing...';
+    
+    // Hide previous results and errors
+    hideSQLError();
+    const resultsPanel = document.getElementById('resultsPanel');
+    resultsPanel.style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/sql/execute', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: query })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            displaySQLResults(result.data, result.columns);
+            hideSQLError();
+        } else {
+            showSQLError(result.error || 'Query execution failed');
+        }
+    } catch (error) {
+        showSQLError('Error executing query: ' + error.message);
+    } finally {
+        executeBtn.disabled = false;
+        executeBtn.classList.remove('btn-loading');
+        executeBtn.innerHTML = '<i class="fas fa-play me-1"></i>Execute';
+    }
+}
+
+// Display SQL results
+function displaySQLResults(data, columns) {
+    const resultsCard = document.getElementById('sqlResultsCard');
+    const resultsContainer = document.getElementById('sqlResultsContainer');
+    const resultCount = document.getElementById('resultCount');
+    
+    sqlResults = data;
+    
+    if (!data || data.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="text-center p-5 text-muted">
+                <i class="fas fa-search fa-3x mb-3" style="opacity: 0.3;"></i>
+                <h6>No results found</h6>
+                <small>Try adjusting your query or check the table data</small>
+            </div>
+        `;
+        resultCount.textContent = '0 rows';
+        resultCount.className = 'badge bg-secondary ms-2';
+    } else {
+        let html = '<table class="table table-striped table-hover mb-0">';
+        
+        // Header
+        html += '<thead><tr>';
+        columns.forEach(col => {
+            html += `<th scope="col">${col}</th>`;
+        });
+        html += '</tr></thead>';
+        
+        // Body
+        html += '<tbody>';
+        data.forEach((row, index) => {
+            html += '<tr>';
+            columns.forEach(col => {
+                const value = row[col];
+                if (value === null || value === undefined) {
+                    html += '<td class="text-muted font-italic"><i class="fas fa-minus me-1"></i>NULL</td>';
+                } else if (value === '') {
+                    html += '<td class="text-muted font-italic"><i class="fas fa-minus me-1"></i>Empty</td>';
+                } else {
+                    html += `<td>${String(value)}</td>`;
+                }
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        
+        resultsContainer.innerHTML = html;
+        resultCount.textContent = `${data.length} row${data.length !== 1 ? 's' : ''}`;
+        resultCount.className = 'badge bg-success ms-2';
+    }
+    
+    // Show results with animation
+    resultsCard.style.display = 'block';
+    resultsCard.style.opacity = '0';
+    resultsCard.style.transform = 'translateY(20px)';
+    
+    setTimeout(() => {
+        resultsCard.style.transition = 'all 0.3s ease';
+        resultsCard.style.opacity = '1';
+        resultsCard.style.transform = 'translateY(0)';
+    }, 50);
+}
+
+// Show SQL error
+function showSQLError(message) {
+    const errorAlert = document.getElementById('sqlErrorAlert');
+    const errorMessage = document.getElementById('sqlErrorMessage');
+    
+    errorMessage.textContent = message;
+    errorAlert.style.display = 'block';
+}
+
+// Hide SQL error
+function hideSQLError() {
+    const errorAlert = document.getElementById('sqlErrorAlert');
+    errorAlert.style.display = 'none';
+}
+
+// Clear SQL editor
+function clearSQL() {
+    const editor = document.getElementById('sqlEditor');
+    editor.value = '';
+    editor.focus();
+    
+    // Hide results and errors
+    document.getElementById('sqlResultsCard').style.display = 'none';
+    hideSQLError();
+}
+
+// Format SQL (basic formatting)
+function formatSQL() {
+    const editor = document.getElementById('sqlEditor');
+    let sql = editor.value;
+    
+    // Basic SQL formatting
+    sql = sql
+        .replace(/\bSELECT\b/gi, 'SELECT')
+        .replace(/\bFROM\b/gi, '\nFROM')
+        .replace(/\bWHERE\b/gi, '\nWHERE')
+        .replace(/\bGROUP BY\b/gi, '\nGROUP BY')
+        .replace(/\bORDER BY\b/gi, '\nORDER BY')
+        .replace(/\bLIMIT\b/gi, '\nLIMIT')
+        .replace(/\bJOIN\b/gi, '\nJOIN')
+        .replace(/\bLEFT JOIN\b/gi, '\nLEFT JOIN')
+        .replace(/\bRIGHT JOIN\b/gi, '\nRIGHT JOIN')
+        .replace(/\bINNER JOIN\b/gi, '\nINNER JOIN')
+        .replace(/\bON\b/gi, '\n  ON')
+        .replace(/\bAND\b/gi, '\n  AND')
+        .replace(/\bOR\b/gi, '\n  OR');
+    
+    editor.value = sql;
+}
+
+// Export SQL results
+function exportSQLResults() {
+    if (!sqlResults || sqlResults.length === 0) {
+        alert('No results to export');
+        return;
+    }
+    
+    // Convert to CSV
+    const columns = Object.keys(sqlResults[0]);
+    let csv = columns.join(',') + '\n';
+    
+    sqlResults.forEach(row => {
+        const values = columns.map(col => {
+            const value = row[col];
+            if (value === null || value === undefined) return 'NULL';
+            if (typeof value === 'string' && value.includes(',')) {
+                return `"${value}"`;
+            }
+            return String(value);
+        });
+        csv += values.join(',') + '\n';
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sql_results.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Copy SQL results
+function copySQLResults() {
+    if (!sqlResults || sqlResults.length === 0) {
+        alert('No results to copy');
+        return;
+    }
+    
+    const columns = Object.keys(sqlResults[0]);
+    let text = columns.join('\t') + '\n';
+    
+    sqlResults.forEach(row => {
+        const values = columns.map(col => {
+            const value = row[col];
+            return value === null || value === undefined ? 'NULL' : String(value);
+        });
+        text += values.join('\t') + '\n';
+    });
+    
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Results copied to clipboard');
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        alert('Failed to copy results');
+    });
+}
+
+// Load all tables on page load
+async function loadAllTables() {
+    try {
+        const response = await fetch('/api/tables');
+        const result = await response.json();
+        
+        if (result.success && result.tables) {
+            allTables = result.tables;
+            const tablesList = document.getElementById('tablesList');
+            tablesList.innerHTML = '';
+            
+            result.tables.forEach(table => {
+                const tableItem = document.createElement('div');
+                tableItem.className = 'explorer-item';
+                tableItem.onclick = () => selectTable(table);
+                tableItem.innerHTML = `<i class="fas fa-table me-2"></i>${table}`;
+                tablesList.appendChild(tableItem);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading tables:', error);
+    }
+}
+
+// Modern SQL Editor Functions
+
+// Global variables for modern SQL editor
+let queryHistory = JSON.parse(localStorage.getItem('sqlQueryHistory') || '[]');
+let editorCursorPosition = { line: 1, column: 1 };
+let autocompleteVisible = false;
+let currentAutocompleteItems = [];
+
+// Drag and Drop Functions
+function dragTable(event, tableName) {
+    event.dataTransfer.setData('text/plain', `table:${tableName}`);
+    event.dataTransfer.effectAllowed = 'copy';
+}
+
+function dragField(event, fieldName) {
+    event.dataTransfer.setData('text/plain', `field:${fieldName}`);
+    event.dataTransfer.effectAllowed = 'copy';
+}
+
+function allowDrop(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+}
+
+function dropIntoEditor(event) {
+    event.preventDefault();
+    const data = event.dataTransfer.getData('text/plain');
+    const [type, value] = data.split(':');
+    
+    const editor = document.getElementById('sqlEditor');
+    const cursorPos = editor.selectionStart;
+    const textBefore = editor.value.substring(0, cursorPos);
+    const textAfter = editor.value.substring(cursorPos);
+    
+    let insertText = '';
+    if (type === 'table') {
+        insertText = value;
+    } else if (type === 'field') {
+        insertText = value;
+    }
+    
+    editor.value = textBefore + insertText + textAfter;
+    editor.focus();
+    editor.setSelectionRange(cursorPos + insertText.length, cursorPos + insertText.length);
+    
+    // Update line numbers
+    updateLineNumbers();
+}
+
+// Autocomplete Functions
+function setupAutocomplete() {
+    const editor = document.getElementById('sqlEditor');
+    if (!editor) return;
+    
+    editor.addEventListener('input', handleAutocomplete);
+    editor.addEventListener('keydown', handleAutocompleteKeydown);
+}
+
+function handleAutocomplete(event) {
+    const editor = event.target;
+    const cursorPos = editor.selectionStart;
+    const text = editor.value;
+    
+    // Find current word
+    const wordMatch = text.substring(0, cursorPos).match(/\b\w*$/);
+    const currentWord = wordMatch ? wordMatch[0] : '';
+    
+    if (currentWord.length >= 2) {
+        showAutocomplete(currentWord, cursorPos);
+    } else {
+        hideAutocomplete();
+    }
+}
+
+function showAutocomplete(word, position) {
+    const suggestions = getSQLSuggestions(word);
+    if (suggestions.length === 0) {
+        hideAutocomplete();
+        return;
+    }
+    
+    currentAutocompleteItems = suggestions;
+    autocompleteVisible = true;
+    
+    // Create or update autocomplete dropdown
+    let dropdown = document.getElementById('autocompleteDropdown');
+    if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.id = 'autocompleteDropdown';
+        dropdown.className = 'autocomplete-dropdown';
+        document.body.appendChild(dropdown);
+    }
+    
+    dropdown.innerHTML = suggestions.map((item, index) => 
+        `<div class="autocomplete-item ${index === 0 ? 'selected' : ''}" data-value="${item.value}">
+            <i class="fas ${item.icon} me-2"></i>
+            <span class="autocomplete-label">${item.label}</span>
+            <span class="autocomplete-type">${item.type}</span>
+        </div>`
+    ).join('');
+    
+    // Position dropdown
+    const editor = document.getElementById('sqlEditor');
+    const rect = editor.getBoundingClientRect();
+    dropdown.style.position = 'absolute';
+    dropdown.style.left = rect.left + 'px';
+    dropdown.style.top = (rect.bottom + 5) + 'px';
+    dropdown.style.zIndex = '1000';
+    dropdown.style.display = 'block';
+}
+
+function hideAutocomplete() {
+    const dropdown = document.getElementById('autocompleteDropdown');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+    autocompleteVisible = false;
+}
+
+function getSQLSuggestions(word) {
+    const suggestions = [];
+    const lowerWord = word.toLowerCase();
+    
+    // SQL Keywords
+    const keywords = [
+        'SELECT', 'FROM', 'WHERE', 'ORDER BY', 'GROUP BY', 'HAVING', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN',
+        'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'INDEX', 'TABLE', 'DATABASE',
+        'AND', 'OR', 'NOT', 'IN', 'EXISTS', 'BETWEEN', 'LIKE', 'IS NULL', 'IS NOT NULL',
+        'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'DISTINCT', 'LIMIT', 'OFFSET'
+    ];
+    
+    keywords.forEach(keyword => {
+        if (keyword.toLowerCase().startsWith(lowerWord)) {
+            suggestions.push({
+                value: keyword,
+                label: keyword,
+                type: 'keyword',
+                icon: 'fa-code'
+            });
+        }
+    });
+    
+    // Table names
+    allTables.forEach(table => {
+        if (table.toLowerCase().startsWith(lowerWord)) {
+            suggestions.push({
+                value: table,
+                label: table,
+                type: 'table',
+                icon: 'fa-table'
+            });
+        }
+    });
+    
+    // Column names
+    currentColumns.forEach(column => {
+        if (column.toLowerCase().startsWith(lowerWord)) {
+            suggestions.push({
+                value: column,
+                label: column,
+                type: 'column',
+                icon: 'fa-columns'
+            });
+        }
+    });
+    
+    return suggestions.slice(0, 10); // Limit to 10 suggestions
+}
+
+function handleAutocompleteKeydown(event) {
+    if (!autocompleteVisible) return;
+    
+    const dropdown = document.getElementById('autocompleteDropdown');
+    if (!dropdown) return;
+    
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+    const selected = dropdown.querySelector('.autocomplete-item.selected');
+    let selectedIndex = Array.from(items).indexOf(selected);
+    
+    switch (event.key) {
+        case 'ArrowDown':
+            event.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+            updateAutocompleteSelection(items, selectedIndex);
+            break;
+        case 'ArrowUp':
+            event.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, 0);
+            updateAutocompleteSelection(items, selectedIndex);
+            break;
+        case 'Enter':
+            event.preventDefault();
+            if (selected) {
+                insertAutocompleteSuggestion(selected.dataset.value);
+            }
+            break;
+        case 'Escape':
+            hideAutocomplete();
+            break;
+    }
+}
+
+function updateAutocompleteSelection(items, selectedIndex) {
+    items.forEach((item, index) => {
+        item.classList.toggle('selected', index === selectedIndex);
+    });
+}
+
+function insertAutocompleteSuggestion(value) {
+    const editor = document.getElementById('sqlEditor');
+    const cursorPos = editor.selectionStart;
+    const text = editor.value;
+    
+    // Find current word
+    const wordMatch = text.substring(0, cursorPos).match(/\b\w*$/);
+    const wordStart = cursorPos - (wordMatch ? wordMatch[0].length : 0);
+    
+    const newText = text.substring(0, wordStart) + value + text.substring(cursorPos);
+    editor.value = newText;
+    editor.focus();
+    editor.setSelectionRange(wordStart + value.length, wordStart + value.length);
+    
+    hideAutocomplete();
+    updateLineNumbers();
+}
+
+// Query History Functions
+function addToHistory(query) {
+    if (!query.trim()) return;
+    
+    // Remove if already exists
+    queryHistory = queryHistory.filter(q => q.query !== query);
+    
+    // Add to beginning
+    queryHistory.unshift({
+        query: query,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Keep only last 50 queries
+    queryHistory = queryHistory.slice(0, 50);
+    
+    // Save to localStorage
+    localStorage.setItem('sqlQueryHistory', JSON.stringify(queryHistory));
+    
+    // Update history display
+    updateHistoryDisplay();
+}
+
+function updateHistoryDisplay() {
+    const historyList = document.getElementById('historyList');
+    if (!historyList) return;
+    
+    if (queryHistory.length === 0) {
+        historyList.innerHTML = '<div class="explorer-empty"><small>No queries executed yet</small></div>';
+        return;
+    }
+    
+    historyList.innerHTML = queryHistory.map((item, index) => `
+        <div class="explorer-item" onclick="loadHistoryQuery(${index})" title="${item.timestamp}">
+            <i class="fas fa-history me-2"></i>
+            <div class="history-item">
+                <div class="history-query">${item.query.substring(0, 50)}${item.query.length > 50 ? '...' : ''}</div>
+                <div class="history-time">${new Date(item.timestamp).toLocaleTimeString()}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function loadHistoryQuery(index) {
+    const query = queryHistory[index].query;
+    const editor = document.getElementById('sqlEditor');
+    editor.value = query;
+    editor.focus();
+    updateLineNumbers();
+}
+
+// Line Numbers and Cursor Position
+function updateLineNumbers() {
+    const editor = document.getElementById('sqlEditor');
+    const linesContainer = document.getElementById('editorLines');
+    if (!editor || !linesContainer) return;
+    
+    const lines = editor.value.split('\n');
+    const lineNumbers = lines.map((_, index) => index + 1).join('\n');
+    linesContainer.textContent = lineNumbers;
+    
+    // Update cursor position
+    updateCursorPosition();
+}
+
+function updateCursorPosition() {
+    const editor = document.getElementById('sqlEditor');
+    const info = document.getElementById('editorInfo');
+    if (!editor || !info) return;
+    
+    const cursorPos = editor.selectionStart;
+    const textBeforeCursor = editor.value.substring(0, cursorPos);
+    const lines = textBeforeCursor.split('\n');
+    const line = lines.length;
+    const column = lines[lines.length - 1].length + 1;
+    
+    editorCursorPosition = { line, column };
+    info.textContent = `Line ${line}, Column ${column}`;
+}
+
+// Enhanced SQL Editor Functions
+function refreshExplorer() {
+    loadAllTables();
+    updateHistoryDisplay();
+}
+
+function toggleResultsPanel() {
+    const panel = document.getElementById('resultsPanel');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'flex';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+function hideErrorPanel() {
+    const panel = document.getElementById('errorPanel');
+    panel.style.display = 'none';
+}
+
+function saveQuery() {
+    const editor = document.getElementById('sqlEditor');
+    const query = editor.value.trim();
+    
+    if (!query) {
+        alert('No query to save');
+        return;
+    }
+    
+    const filename = prompt('Enter filename for query:', `query_${new Date().toISOString().split('T')[0]}.sql`);
+    if (filename) {
+        const blob = new Blob([query], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+}
+
+function loadQuery() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.sql,.txt';
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const editor = document.getElementById('sqlEditor');
+                editor.value = e.target.result;
+                updateLineNumbers();
+            };
+            reader.readAsText(file);
+        }
+    };
+    input.click();
+}
+
+// Enhanced display functions
+function displaySQLResults(data, columns) {
+    const resultsPanel = document.getElementById('resultsPanel');
+    const resultsContainer = document.getElementById('sqlResultsContainer');
+    const resultCount = document.getElementById('resultCount');
+    
+    sqlResults = data;
+    
+    if (!data || data.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="text-center p-5 text-muted">
+                <i class="fas fa-search fa-3x mb-3" style="opacity: 0.3;"></i>
+                <h6>No results found</h6>
+                <small>Try adjusting your query or check the table data</small>
+            </div>
+        `;
+        resultCount.textContent = '0 rows';
+        resultCount.className = 'results-count';
+        resultCount.style.background = '#718096';
+    } else {
+        let html = '<table class="table table-striped table-hover mb-0">';
+        
+        // Header
+        html += '<thead><tr>';
+        columns.forEach(col => {
+            html += `<th scope="col">${col}</th>`;
+        });
+        html += '</tr></thead>';
+        
+        // Body
+        html += '<tbody>';
+        data.forEach((row, index) => {
+            html += '<tr>';
+            columns.forEach(col => {
+                const value = row[col];
+                if (value === null || value === undefined) {
+                    html += '<td class="text-muted font-italic"><i class="fas fa-minus me-1"></i>NULL</td>';
+                } else if (value === '') {
+                    html += '<td class="text-muted font-italic"><i class="fas fa-minus me-1"></i>Empty</td>';
+                } else {
+                    html += `<td>${String(value)}</td>`;
+                }
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        
+        resultsContainer.innerHTML = html;
+        resultCount.textContent = `${data.length} row${data.length !== 1 ? 's' : ''}`;
+        resultCount.className = 'results-count';
+        resultCount.style.background = '#38a169';
+    }
+    
+    // Show results panel
+    resultsPanel.style.display = 'flex';
+    
+    // Add to history
+    const editor = document.getElementById('sqlEditor');
+    addToHistory(editor.value.trim());
+}
+
+function showSQLError(message) {
+    const errorPanel = document.getElementById('errorPanel');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    errorMessage.textContent = message;
+    errorPanel.style.display = 'block';
+}
+
+function hideSQLError() {
+    const errorPanel = document.getElementById('errorPanel');
+    errorPanel.style.display = 'none';
+}
+
+// Initialize SQL editor on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Load all tables
+    loadAllTables();
+    
+    // Set up search functionality
+    const tableSearch = document.getElementById('tableSearch');
+    const fieldSearch = document.getElementById('fieldSearch');
+    
+    if (tableSearch) {
+        tableSearch.addEventListener('input', function() {
+            filterExplorerItems('tablesList', this.value);
+        });
+    }
+    
+    if (fieldSearch) {
+        fieldSearch.addEventListener('input', function() {
+            filterExplorerItems('fieldsList', this.value);
+        });
+    }
+    
+    // Set up SQL editor
+    const sqlEditor = document.getElementById('sqlEditor');
+    if (sqlEditor) {
+        // Keyboard shortcuts
+        sqlEditor.addEventListener('keydown', function(e) {
+            // Ctrl+Enter to execute
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                executeSQL();
+            }
+            // Ctrl+K to clear
+            else if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                clearSQL();
+            }
+            // Ctrl+Shift+F to format
+            else if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+                e.preventDefault();
+                formatSQL();
+            }
+            // Ctrl+S to save
+            else if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveQuery();
+            }
+        });
+        
+        // Cursor position tracking
+        sqlEditor.addEventListener('input', function() {
+            updateLineNumbers();
+        });
+        
+        sqlEditor.addEventListener('click', function() {
+            updateCursorPosition();
+        });
+        
+        sqlEditor.addEventListener('keyup', function() {
+            updateCursorPosition();
+        });
+        
+        // Drag and drop
+        sqlEditor.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        });
+        
+        sqlEditor.addEventListener('dragleave', function(e) {
+            this.classList.remove('drag-over');
+        });
+        
+        sqlEditor.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+        });
+    }
+    
+    // Set up autocomplete
+    setupAutocomplete();
+    
+    // Initialize line numbers
+    updateLineNumbers();
+    
+    // Load query history
+    updateHistoryDisplay();
+    
+    // Add tooltips to buttons
+    const executeBtn = document.getElementById('executeSQLBtn');
+    if (executeBtn) {
+        executeBtn.title = 'Execute SQL Query (Ctrl+Enter)';
+    }
+    
+    const clearBtn = document.querySelector('button[onclick="clearSQL()"]');
+    if (clearBtn) {
+        clearBtn.title = 'Clear Editor (Ctrl+K)';
+    }
+    
+    const formatBtn = document.querySelector('button[onclick="formatSQL()"]');
+    if (formatBtn) {
+        formatBtn.title = 'Format SQL (Ctrl+Shift+F)';
+    }
+});
+
+// Filter explorer items
+function filterExplorerItems(listId, searchTerm) {
+    const list = document.getElementById(listId);
+    const items = list.querySelectorAll('.explorer-item');
+    
+    items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(searchTerm.toLowerCase())) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
 </script>
 {% endblock %}
