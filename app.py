@@ -1909,8 +1909,16 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            flash('Please log in to access this page.', 'warning')
-            return redirect(url_for('login', next=request.url))
+            # Check if this is an API request
+            if request.path.startswith('/api/'):
+                return jsonify({
+                    'success': False,
+                    'error': 'Authentication required',
+                    'redirect': url_for('login')
+                }), 401
+            else:
+                flash('Please log in to access this page.', 'warning')
+                return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -2274,7 +2282,7 @@ def databases():
 @login_required
 def view_table(table_name):
     """View data from specified table"""
-    limit = request.args.get('limit', 100, type=int)
+    limit = request.args.get('limit', request.args.get('per_page', 100, type=int), type=int)
     page = request.args.get('page', 1, type=int)
     
     # Get filter parameters (for URL-based filtering)
@@ -2310,6 +2318,7 @@ def view_table(table_name):
                              columns=columns, 
                              rows=rows,
                              limit=limit,
+                             per_page=limit,
                              page=page,
                              total_rows=result.get('total_rows', 0),
                              total_pages=total_pages,
@@ -2945,8 +2954,13 @@ def api_lazy_table_stats():
 def get_table_data_api(table_name):
     """Get table data via API with optional filtering"""
     try:
+        # Debug logging
+        print(f"API call for table: {table_name}")
+        print(f"Session user_id: {session.get('user_id')}")
+        print(f"Request args: {request.args}")
+        
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
+        per_page = request.args.get('per_page', request.args.get('limit', 50, type=int), type=int)
         
         # Get filter parameters
         filters = request.args.get('filters')
@@ -2976,6 +2990,9 @@ def get_table_data_api(table_name):
                 'error': f'Error loading table data: {result}'
             })
     except Exception as e:
+        print(f"Error in get_table_data_api: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': f'Error loading table data: {str(e)}'
@@ -4184,10 +4201,86 @@ def api_custom_chart_columns(table_name):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
+def optimize_query(query):
+    """Optimize SQL query for better performance"""
+    import re
+    
+    # Convert to lowercase for pattern matching
+    query_lower = query.lower()
+    
+    # Add LIMIT if not present and query looks like it might return many rows
+    if 'limit' not in query_lower and 'count(' not in query_lower:
+        # Add a reasonable default limit for performance
+        if query.strip().endswith(';'):
+            query = query.rstrip(';') + ' LIMIT 1000;'
+        else:
+            query = query + ' LIMIT 1000'
+    
+    # Optimize ILIKE patterns for better performance
+    # Convert ILIKE '%pattern%' to ILIKE 'pattern%' when possible
+    # This allows the database to use indexes more effectively
+    ilike_pattern = r"(\w+)\s+ILIKE\s+'%([^%]+)%'"
+    def optimize_ilike(match):
+        column = match.group(1)
+        pattern = match.group(2)
+        # If pattern doesn't start with %, we can optimize it
+        if not pattern.startswith('%'):
+            return f"{column} ILIKE '{pattern}%'"
+        return match.group(0)
+    
+    query = re.sub(ilike_pattern, optimize_ilike, query, flags=re.IGNORECASE)
+    
+    # Add query hints for better performance
+    if 'public.' in query_lower:
+        # For queries on public schema, add some optimization hints
+        query = f"/* Optimized query */ {query}"
+    
+    return query
+
+def suggest_indexes_for_query(query):
+    """Suggest indexes that could improve query performance"""
+    import re
+    
+    suggestions = []
+    query_lower = query.lower()
+    
+    # Check for ILIKE patterns that could benefit from indexes
+    ilike_matches = re.findall(r'(\w+)\s+ILIKE\s+[\'"]%([^%]+)%[\'"]', query_lower)
+    for column, pattern in ilike_matches:
+        suggestions.append({
+            'type': 'index',
+            'column': column,
+            'suggestion': f"CREATE INDEX CONCURRENTLY idx_{column}_ilike ON {extract_table_name(query)} ({column} text_pattern_ops);",
+            'reason': f"ILIKE pattern on {column} could benefit from a text pattern index"
+        })
+    
+    # Check for WHERE clauses that could benefit from indexes
+    where_matches = re.findall(r'WHERE\s+(\w+)\s*[=<>]', query_lower)
+    for column in where_matches:
+        suggestions.append({
+            'type': 'index',
+            'column': column,
+            'suggestion': f"CREATE INDEX CONCURRENTLY idx_{column} ON {extract_table_name(query)} ({column});",
+            'reason': f"Equality/range condition on {column} could benefit from an index"
+        })
+    
+    return suggestions
+
+def extract_table_name(query):
+    """Extract table name from query for index suggestions"""
+    import re
+    
+    # Look for FROM clause
+    from_match = re.search(r'FROM\s+([^\s,]+)', query, re.IGNORECASE)
+    if from_match:
+        return from_match.group(1)
+    
+    return "table_name"
+
 @app.route('/api/sql/execute', methods=['POST'])
 @login_required
 def api_sql_execute():
-    """API endpoint to execute custom SQL queries"""
+    """API endpoint to execute custom SQL queries with optimization"""
     try:
         data = request.get_json()
         query = data.get('query', '').strip()
@@ -4212,8 +4305,14 @@ def api_sql_execute():
         cursor = db_manager.connection.cursor()
         
         try:
-            # Execute the query
-            cursor.execute(query)
+            # Set query timeout (30 seconds)
+            cursor.execute("SET statement_timeout = '30s'")
+            
+            # Optimize query for better performance
+            optimized_query = optimize_query(query)
+            
+            # Execute the optimized query
+            cursor.execute(optimized_query)
             results = cursor.fetchall()
             
             # Get column names
@@ -4229,11 +4328,18 @@ def api_sql_execute():
             
             cursor.close()
             
+            # Get optimization suggestions
+            suggestions = suggest_indexes_for_query(query)
+            
             return jsonify({
                 'success': True,
                 'data': data_list,
                 'columns': columns,
-                'row_count': len(data_list)
+                'row_count': len(data_list),
+                'optimized': optimized_query != query,
+                'original_query': query,
+                'optimized_query': optimized_query,
+                'suggestions': suggestions
             })
             
         except Exception as e:

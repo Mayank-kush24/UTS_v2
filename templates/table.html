@@ -134,13 +134,13 @@
             <div class="pagination-controls">
             <div class="btn-group" role="group" aria-label="Rows per page">
                 <a href="#" onclick="changePageSize(25)" 
-                   class="btn btn-outline-primary btn-sm {{ 'active' if limit == 25 else '' }}">25</a>
+                   class="btn btn-outline-primary btn-sm {{ 'active' if per_page == 25 else '' }}">25</a>
                 <a href="#" onclick="changePageSize(50)" 
-                   class="btn btn-outline-primary btn-sm {{ 'active' if limit == 50 else '' }}">50</a>
+                   class="btn btn-outline-primary btn-sm {{ 'active' if per_page == 50 else '' }}">50</a>
                 <a href="#" onclick="changePageSize(100)" 
-                   class="btn btn-outline-primary btn-sm {{ 'active' if limit == 100 else '' }}">100</a>
+                   class="btn btn-outline-primary btn-sm {{ 'active' if per_page == 100 else '' }}">100</a>
                 <a href="#" onclick="changePageSize(250)" 
-                   class="btn btn-outline-primary btn-sm {{ 'active' if limit == 250 else '' }}">250</a>
+                   class="btn btn-outline-primary btn-sm {{ 'active' if per_page == 250 else '' }}">250</a>
                 </div>
             </div>
             
@@ -200,7 +200,7 @@
                             <tbody>
                                 {% for row in rows %}
                                     <tr class="data-row">
-                                        <td class="row-number">{{ (page - 1) * limit + loop.index }}</td>
+                                        <td class="row-number">{{ (page - 1) * per_page + loop.index }}</td>
                                         {% for cell in row %}
                                             <td class="data-cell">
                                                 {% if cell is none %}
@@ -365,12 +365,12 @@
     </div>
     
     <!-- Pagination Footer -->
-    {% if total_rows > limit %}
+    {% if total_rows > per_page %}
     <div class="card-footer">
         <div class="d-flex justify-content-between align-items-center">
             <small class="text-muted fw-medium">
                 <i class="fas fa-info-circle me-1"></i>
-                Showing {{ (page - 1) * limit + 1 }} to {{ [(page * limit), total_rows] | min }} of {{ total_rows }} rows
+                Showing {{ (page - 1) * per_page + 1 }} to {{ [(page * per_page), total_rows] | min }} of {{ total_rows }} rows
                 {% if filtered %}
                     <span class="badge bg-warning">Filtered</span>
                 {% endif %}
@@ -1406,7 +1406,7 @@ let currentPage = {{ page }};
 // SQL Editor variables
 let sqlResults = [];
 let allTables = [];
-let currentLimit = {{ limit }};
+let currentLimit = {{ per_page }};
 let currentTableName = {{ table_name | tojson }};
 let currentRowData = {{ (rows | tojson) if rows else '[]' }};
 let currentColumns = {{ (columns | tojson) if columns else '[]' }};
@@ -1738,13 +1738,38 @@ function applyFilters() {
     
     const params = new URLSearchParams({
         page: 1, // Reset to first page when applying filters
-        limit: currentLimit,
+        per_page: currentLimit,
         filters: JSON.stringify(currentFilters)
     });
     
     fetch(`/api/table/${currentTableName}/data?${params}`)
-        .then(response => response.json())
+        .then(response => {
+            console.log('Filter API Response status:', response.status);
+            
+            // Check for authentication errors
+            if (response.status === 401) {
+                console.error('Authentication required');
+                showToast('Session expired. Please log in again.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return;
+            }
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Filter response is not JSON, content-type:', contentType);
+                return response.text().then(text => {
+                    console.error('Filter response text:', text.substring(0, 200));
+                    throw new Error(`Expected JSON but got ${contentType}. Response: ${text.substring(0, 100)}...`);
+                });
+            }
+            
+            return response.json();
+        })
         .then(data => {
+            console.log('Filter API Response data:', data);
             if (data.success) {
                 updateDataTable(data);
                 currentPage = 1;
@@ -1756,7 +1781,7 @@ function applyFilters() {
         })
         .catch(error => {
             console.error('Error applying filters:', error);
-            showToast('Error applying filters', 'error');
+            showToast(`Error applying filters: ${error.message}`, 'error');
         })
         .finally(() => {
             showLoading(false);
@@ -1895,7 +1920,7 @@ function reloadData() {
     
     const params = new URLSearchParams({
         page: currentPage,
-        limit: currentLimit
+        per_page: currentLimit
     });
     
     if (currentFilters.groups.length > 0) {
@@ -1903,8 +1928,34 @@ function reloadData() {
     }
     
     fetch(`/api/table/${currentTableName}/data?${params}`)
-        .then(response => response.json())
+        .then(response => {
+            console.log('API Response status:', response.status);
+            console.log('API Response headers:', response.headers);
+            
+            // Check for authentication errors
+            if (response.status === 401) {
+                console.error('Authentication required');
+                showToast('Session expired. Please log in again.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+                return;
+            }
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Response is not JSON, content-type:', contentType);
+                return response.text().then(text => {
+                    console.error('Response text:', text.substring(0, 200));
+                    throw new Error(`Expected JSON but got ${contentType}. Response: ${text.substring(0, 100)}...`);
+                });
+            }
+            
+            return response.json();
+        })
         .then(data => {
+            console.log('API Response data:', data);
             if (data.success) {
                 updateDataTable(data);
                 updateURL();
@@ -1914,7 +1965,7 @@ function reloadData() {
         })
         .catch(error => {
             console.error('Error loading data:', error);
-            showToast('Error loading data', 'error');
+            showToast(`Error loading data: ${error.message}`, 'error');
         })
         .finally(() => {
             showLoading(false);
@@ -1940,7 +1991,7 @@ function updateDataTable(data) {
     // For now, redirect with the new parameters
     const params = new URLSearchParams({
         page: currentPage,
-        limit: currentLimit
+        per_page: currentLimit
     });
     
     if (currentFilters.groups.length > 0) {
@@ -2599,7 +2650,7 @@ function hideExportProgress() {
 function updateURL() {
     const params = new URLSearchParams({
         page: currentPage,
-        limit: currentLimit
+        per_page: currentLimit
     });
     
     if (currentFilters.groups.length > 0) {
@@ -3092,17 +3143,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Toggle explorer sections
 function toggleExplorerSection(section) {
-    const content = document.getElementById(section + '-section');
+    console.log('toggleExplorerSection called with:', section);
+    const content = document.getElementById(section + '-content');
     const chevron = document.getElementById(section + '-chevron');
     
-    if (content.classList.contains('show')) {
-        content.classList.remove('show');
-        chevron.classList.remove('fa-chevron-up');
-        chevron.classList.add('fa-chevron-down');
+    console.log('Content element:', content);
+    console.log('Chevron element:', chevron);
+    
+    if (content && chevron) {
+        if (content.classList.contains('show')) {
+            content.classList.remove('show');
+            chevron.classList.remove('fa-chevron-up');
+            chevron.classList.add('fa-chevron-down');
+            console.log('Hiding section:', section);
+        } else {
+            content.classList.add('show');
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-up');
+            console.log('Showing section:', section);
+        }
     } else {
-        content.classList.add('show');
-        chevron.classList.remove('fa-chevron-down');
-        chevron.classList.add('fa-chevron-up');
+        console.error('Could not find elements for section:', section);
     }
 }
 
@@ -3203,24 +3264,35 @@ async function executeSQL() {
     resultsPanel.style.display = 'none';
     
     try {
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 second timeout
+        
         const response = await fetch('/api/sql/execute', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ query: query })
+            body: JSON.stringify({ query: query }),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         const result = await response.json();
         
         if (result.success) {
-            displaySQLResults(result.data, result.columns);
+            displaySQLResults(result.data, result.columns, result);
             hideSQLError();
         } else {
             showSQLError(result.error || 'Query execution failed');
         }
     } catch (error) {
-        showSQLError('Error executing query: ' + error.message);
+        if (error.name === 'AbortError') {
+            showSQLError('Query timed out after 35 seconds. Try optimizing your query or adding a LIMIT clause.');
+        } else {
+            showSQLError('Error executing query: ' + error.message);
+        }
     } finally {
         executeBtn.disabled = false;
         executeBtn.classList.remove('btn-loading');
@@ -3229,7 +3301,7 @@ async function executeSQL() {
 }
 
 // Display SQL results
-function displaySQLResults(data, columns) {
+function displaySQLResults(data, columns, result = null) {
     const resultsCard = document.getElementById('sqlResultsCard');
     const resultsContainer = document.getElementById('sqlResultsContainer');
     const resultCount = document.getElementById('resultCount');
@@ -3277,6 +3349,11 @@ function displaySQLResults(data, columns) {
         resultsContainer.innerHTML = html;
         resultCount.textContent = `${data.length} row${data.length !== 1 ? 's' : ''}`;
         resultCount.className = 'badge bg-success ms-2';
+        
+        // Show optimization information if available
+        if (result && (result.optimized || result.suggestions)) {
+            showOptimizationInfo(result);
+        }
     }
     
     // Show results with animation
@@ -3289,6 +3366,55 @@ function displaySQLResults(data, columns) {
         resultsCard.style.opacity = '1';
         resultsCard.style.transform = 'translateY(0)';
     }, 50);
+}
+
+// Show optimization information
+function showOptimizationInfo(result) {
+    // Create or update optimization info panel
+    let infoPanel = document.getElementById('optimizationInfo');
+    if (!infoPanel) {
+        infoPanel = document.createElement('div');
+        infoPanel.id = 'optimizationInfo';
+        infoPanel.className = 'alert alert-info mt-3';
+        document.getElementById('sqlResultsCard').appendChild(infoPanel);
+    }
+    
+    let infoHtml = '<h6><i class="fas fa-lightbulb me-2"></i>Query Optimization Info</h6>';
+    
+    if (result.optimized) {
+        infoHtml += '<div class="mb-2"><strong>Query was optimized:</strong></div>';
+        infoHtml += `<div class="mb-2"><small class="text-muted">Original: <code>${result.original_query}</code></small></div>`;
+        infoHtml += `<div class="mb-2"><small class="text-success">Optimized: <code>${result.optimized_query}</code></small></div>`;
+    }
+    
+    if (result.suggestions && result.suggestions.length > 0) {
+        infoHtml += '<div class="mt-3"><strong>Performance Suggestions:</strong></div>';
+        result.suggestions.forEach((suggestion, index) => {
+            infoHtml += `<div class="mt-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <small class="text-muted">${suggestion.reason}</small>
+                        <br>
+                        <code class="small">${suggestion.suggestion}</code>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard('${suggestion.suggestion.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>`;
+        });
+    }
+    
+    infoPanel.innerHTML = infoHtml;
+}
+
+// Copy text to clipboard
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard!', 'success');
+    }).catch(() => {
+        showToast('Failed to copy to clipboard', 'error');
+    });
 }
 
 // Show SQL error
@@ -3981,5 +4107,12 @@ function filterExplorerItems(listId, searchTerm) {
         }
     });
 }
+
+// Make functions globally accessible
+window.toggleExplorerSection = toggleExplorerSection;
+window.selectTable = selectTable;
+window.insertField = insertField;
+window.loadTableFields = loadTableFields;
+window.refreshExplorer = refreshExplorer;
 </script>
 {% endblock %}

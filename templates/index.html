@@ -3,27 +3,32 @@
 {% block title %}Dashboard - UTS 2.0{% endblock %}
 
 {% block content %}
-<!-- Header Section -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="mb-2 text-gradient">
-                    <i class="fas fa-tachometer-alt me-2 pulse-glow"></i>Database Dashboard
-                </h1>
-                <p class="text-muted mb-0 fw-medium">Real-time monitoring and data exploration</p>
-            </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-outline-primary icon-hover" onclick="refreshDashboard()">
-                    <i class="fas fa-sync-alt me-1" id="refreshIcon"></i>Refresh
-                </button>
-                <button class="btn btn-outline-success icon-hover" onclick="checkConnection()" id="connectionBtn">
-                    <i class="fas fa-plug me-1"></i>Test Connection
-                </button>
+<!-- Override container for full-width dashboard -->
+<div class="container-fluid px-4">
+    <!-- Main Dashboard Content -->
+    <div class="dashboard-content">
+        <!-- Header Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-2 text-gradient">
+                            <i class="fas fa-tachometer-alt me-2 pulse-glow"></i>Database Dashboard
+                        </h1>
+                        <p class="text-muted mb-0 fw-medium">Real-time monitoring and data exploration</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary icon-hover" onclick="refreshDashboard()">
+                            <i class="fas fa-sync-alt me-1" id="refreshIcon"></i>Refresh
+                        </button>
+                        <button class="btn btn-outline-success icon-hover" onclick="checkConnection()" id="connectionBtn">
+                            <i class="fas fa-plug me-1"></i>Test Connection
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
+
 
 <!-- Status Cards Row -->
 <div class="row mb-4">
@@ -303,19 +308,218 @@
 
 {% endblock %}
 
+{% block styles %}
+<style>
+/* Dashboard Content */
+.dashboard-content {
+    width: 100%;
+    background: #f8f9fa !important;
+    min-height: calc(100vh - 200px);
+}
+
+/* Override Bootstrap container styles for dashboard */
+.container-fluid.px-4 {
+    max-width: none !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+
+.history-query {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    color: #a0aec0;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* SQL Editor Styles */
+.sql-editor-wrapper {
+    position: relative;
+    display: flex;
+    background: #ffffff !important;
+    min-height: 300px;
+    border: 1px solid #dee2e6;
+}
+
+.editor-lines {
+    background: #f7fafc;
+    color: #a0aec0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 16px 8px;
+    border-right: 1px solid #e2e8f0;
+    user-select: none;
+    min-width: 50px;
+    text-align: right;
+}
+
+.sql-editor {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 16px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 300px;
+    background: #ffffff;
+    color: #2d3748;
+}
+
+.sql-editor:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.sql-editor.drag-over {
+    background: #f0f9ff;
+    border: 2px dashed #63b3ed;
+}
+
+/* Editor Toolbar */
+.editor-toolbar {
+    background: #f7fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: #e2e8f0;
+    margin: 0 8px;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toolbar-info {
+    font-size: 12px;
+    color: #718096;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* Results Panel */
+.results-panel {
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+    max-height: 400px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.results-header {
+    background: #f7fafc;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.results-title {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.results-count {
+    margin-left: 8px;
+    font-size: 12px;
+    color: #718096;
+    background: #e2e8f0;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.results-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.results-content {
+    flex: 1;
+    overflow: auto;
+}
+
+/* Error Panel */
+.error-panel {
+    background: #fed7d7;
+    border-top: 1px solid #feb2b2;
+    padding: 12px 16px;
+}
+
+.error-content {
+    display: flex;
+    align-items: center;
+    color: #c53030;
+    font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    
+    .sql-editor {
+        font-size: 12px;
+    }
+    
+    .editor-lines {
+        font-size: 12px;
+        min-width: 40px;
+    }
+    
+    .toolbar-left {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .toolbar-divider {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
 {% block scripts %}
 <script>
 // Global variables
 let activityChart = null;
 let refreshInterval = null;
+let sqlResults = [];
+let queryHistory = JSON.parse(localStorage.getItem('sqlQueryHistory') || '[]');
+let currentTableName = null;
+let editorCursorPosition = { line: 1, column: 1 };
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard initializing...'); // Debug log
     initializeChart();
     setupViewToggle();
     startAutoRefresh();
     setupSearchFilter();
     setupTableSearch();
+    
+    // Initialize SQL editor
+    initializeSQLEditor();
     
     // Load table stats with a small delay to ensure DOM is ready
     setTimeout(() => {
@@ -324,7 +528,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     initializeTableDropdowns();
     addClickOutsideToClose();
+    
+    console.log('Dashboard initialization complete'); // Debug log
 });
+
 
 // Chart initialization
 function initializeChart() {
@@ -859,5 +1066,70 @@ function showNoResultsMessage(show) {
 window.addEventListener('beforeunload', function() {
     stopAutoRefresh();
 });
+
+// ==================== SQL EDITOR FUNCTIONS ====================
+
+// Initialize SQL editor
+function initializeSQLEditor() {
+    const sqlEditor = document.getElementById('sqlEditor');
+    if (!sqlEditor) return;
+    
+    // Set up event listeners
+    sqlEditor.addEventListener('keydown', function(e) {
+        // Ctrl+Enter to execute
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            executeSQL();
+        }
+        // Tab to insert spaces
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+            this.selectionStart = this.selectionEnd = start + 4;
+        }
+    });
+    
+    sqlEditor.addEventListener('input', function() {
+        updateLineNumbers();
+    });
+    
+    sqlEditor.addEventListener('click', function() {
+        updateCursorPosition();
+    });
+    
+    sqlEditor.addEventListener('keyup', function() {
+        updateCursorPosition();
+    });
+    
+    // Initialize line numbers
+    updateLineNumbers();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 </script>
 {% endblock %}
