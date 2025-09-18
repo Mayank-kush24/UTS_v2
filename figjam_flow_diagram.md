@@ -22,22 +22,50 @@
 │                            AUTHENTICATION LAYER                                │
 │                                                                                 │
 │  ┌─────────────────┐                    ┌─────────────────┐                    │
-│  │   LOGIN PAGE    │                    │ REGISTER PAGE   │                    │
-│  │                 │                    │                 │                    │
-│  │ • Username/Email│                    │ • Full Name     │                    │
-│  │ • Password      │                    │ • Username      │                    │
-│  │ • Remember Me   │                    │ • Email         │                    │
-│  │ • Forgot Pass   │                    │ • Password      │                    │
-│  └─────────────────┘                    │ • Confirm Pass  │                    │
-│           │                             └─────────────────┘                    │
+│  │   MAIN LOGIN    │                    │ REGISTER PAGE   │                    │
+│  │   (OTP PRIMARY) │                    │                 │                    │
+│  │                 │                    │ • Full Name     │                    │
+│  │ • Email Input   │                    │ • Username      │                    │
+│  │ • Send OTP      │                    │ • Email         │                    │
+│  │ • Toggle Pass   │                    │ • Password      │                    │
+│  │ • Password Form │                    │ • Confirm Pass  │                    │
+│  │   (Hidden)      │                    │                 │                    │
+│  └─────────────────┘                    └─────────────────┘                    │
 │           │                                       │                            │
 │           ▼                                       ▼                            │
+│  ┌─────────────────┐                    ┌─────────────────┐                    │
+│  │   OTP LOGIN     │                    │ PASSWORD LOGIN  │                    │
+│  │   (DEDICATED)   │                    │   (DEDICATED)   │                    │
+│  │                 │                    │                 │                    │
+│  │ • Email Input   │                    │ • Username      │                    │
+│  │ • Send Code     │                    │ • Password      │                    │
+│  │ • Resend OTP    │                    │ • Remember Me   │                    │
+│  │ • Rate Limiting │                    │ • Forgot Pass   │                    │
+│  └─────────────────┘                    └─────────────────┘                    │
+│           │                                       │                            │
+│           ▼                                       ▼                            │
+│  ┌─────────────────┐                    ┌─────────────────┐                    │
+│  │  OTP VERIFY     │                    │                 │                    │
+│  │                 │                    │                 │                    │
+│  │ • 6-Digit Code  │                    │                 │                    │
+│  │ • Auto-Submit   │                    │                 │                    │
+│  │ • Resend Timer  │                    │                 │                    │
+│  │ • 5 Min Expiry  │                    │                 │                    │
+│  └─────────────────┘                    │                 │                    │
+│           │                             │                 │                    │
+│           ▼                             ▼                 ▼                    │
 │  ┌─────────────────────────────────────────────────────────────────────────┐   │
 │  │                        USER MANAGER                                    │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │   │
 │  │  │   Password  │  │   Session   │  │   User      │  │   Avatar    │   │   │
 │  │  │   Hashing   │  │ Management  │  │   Storage   │  │ Management  │   │   │
 │  │  │ (PBKDF2)    │  │ (30 days)   │  │ (JSON)      │  │ (Upload)    │   │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘   │   │
+│  │                                                                         │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │   │
+│  │  │   OTP       │  │   Email     │  │   Rate      │  │   Security  │   │   │
+│  │  │   System    │  │   Sending   │  │   Limiting  │  │   Features  │   │   │
+│  │  │ (6-digit)   │  │ (Flask-Mail)│  │ (3/hour)    │  │ (5min exp)  │   │   │
 │  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘   │   │
 │  └─────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────┘
@@ -157,10 +185,18 @@
 ## Color Coding for FigJam:
 
 ### 🔵 BLUE - Authentication & User Management
-- Login/Register pages
+- Main Login (OTP Primary)
+- OTP Login (Dedicated)
+- Password Login (Dedicated)
+- OTP Verification
+- Register pages
 - User Manager
 - Session Management
 - Profile Management
+- OTP System
+- Email Sending (Flask-Mail)
+- Rate Limiting
+- Security Features
 
 ### 🟢 GREEN - Database Operations
 - Database Management
@@ -207,6 +243,34 @@
 - API Layer → Control Panel
 - All components → User Profile Management
 
+## 🔐 **OTP Authentication Flow (NEW):**
+
+### **Primary Flow:**
+1. **User Entry** → **Main Login (OTP Primary)**
+2. **Email Input** → **OTP Generation & Sending**
+3. **OTP Verification** → **User Authentication**
+4. **Authentication Success** → **Main Dashboard**
+
+### **Secondary Flow:**
+1. **User Entry** → **Main Login (OTP Primary)**
+2. **Toggle Button** → **Password Login (Hidden)**
+3. **Password Form** → **User Authentication**
+4. **Authentication Success** → **Main Dashboard**
+
+### **Dedicated Routes:**
+- `/login` - Main login (OTP primary, password secondary)
+- `/login-otp` - OTP-only login page
+- `/login-password` - Password-only login page
+- `/verify-otp` - OTP verification page
+- `/resend-otp` - Resend OTP endpoint
+
+### **Security Features:**
+- **Rate Limiting**: Max 3 OTP requests per hour per email
+- **Time Expiry**: OTP codes expire after 5 minutes
+- **Attempt Limiting**: Max 3 verification attempts per OTP
+- **Email Validation**: Proper email format checking
+- **Auto-cleanup**: Expired OTPs are automatically removed
+
 ## 🆕 **Additional Components to Add:**
 
 ### **🔵 BLUE - Security & Permissions**
@@ -214,6 +278,18 @@
 - Password reset functionality
 - Session timeout handling
 - Security audit logging
+- OTP-based authentication
+- Email verification system
+- Rate limiting and security controls
+
+### **🎨 UI/UX Enhancements (NEW)**
+- Toggle functionality for login methods
+- Smooth animations and transitions
+- Responsive design for all devices
+- Auto-focus management
+- Loading states and visual feedback
+- Clean, modern interface design
+- Progressive disclosure of options
 
 ### **🟢 GREEN - Data Management**
 - Data export/import functionality
@@ -243,6 +319,13 @@
 
 ### **✅ Completed Features:**
 - [x] User authentication and management
+- [x] **OTP-based login system (Primary)**
+- [x] **Email OTP verification**
+- [x] **Password login (Secondary)**
+- [x] **Toggle functionality for login methods**
+- [x] **Rate limiting for OTP requests**
+- [x] **Email sending with Flask-Mail**
+- [x] **Smooth animations and transitions**
 - [x] Database connection management
 - [x] Basic data visualization
 - [x] Geographic mapping
@@ -266,3 +349,35 @@
 - [ ] Automated testing
 
 This structure will give you a comprehensive, FigJam-ready flow diagram that you can easily replicate and customize!
+
+## 🚀 **Recent Updates (OTP Authentication System):**
+
+### **Key Changes Made:**
+1. **Primary OTP Login**: Main login page now shows OTP form by default
+2. **Hidden Password Form**: Password login is hidden and only shows on toggle
+3. **Smooth Animations**: Toggle functionality with slide and fade effects
+4. **Smart Focus Management**: Auto-focuses appropriate fields
+5. **Enhanced Security**: Rate limiting, time expiry, and attempt limiting
+6. **Email Integration**: Flask-Mail for sending OTP codes
+7. **Responsive Design**: Works perfectly on all devices
+
+### **New Routes Added:**
+- `/login` - Main login (OTP primary, password secondary)
+- `/login-otp` - Dedicated OTP login page
+- `/login-password` - Dedicated password login page
+- `/verify-otp` - OTP verification page
+- `/resend-otp` - Resend OTP endpoint
+
+### **Technical Improvements:**
+- **Smart Form Detection**: Single route handles both OTP and password
+- **JavaScript Enhancements**: Dual form support with proper validation
+- **CSS Animations**: Smooth transitions and visual feedback
+- **Security Features**: Comprehensive rate limiting and validation
+- **User Experience**: Clean, focused interface with progressive disclosure
+
+### **Benefits:**
+- **More Secure**: OTP is more secure than passwords
+- **User Friendly**: No need to remember passwords
+- **Mobile Optimized**: OTP works great on mobile devices
+- **Flexible**: Both methods available with easy toggle
+- **Modern**: Clean, professional interface with smooth animations

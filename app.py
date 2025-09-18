@@ -2330,6 +2330,74 @@ def load_view_configuration(table_name):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Main login page - OTP primary, password secondary"""
+    if request.method == 'POST':
+        # Check if this is an OTP request (has email field)
+        if 'email' in request.form:
+            # Handle OTP login
+            email = request.form['email'].strip().lower()
+            
+            # Validate email format
+            if '@' not in email or '.' not in email.split('@')[1]:
+                flash('Please enter a valid email address', 'error')
+                return render_template('auth/login.html')
+            
+            # Check if user exists with this email
+            user_manager = UserManager()
+            user = user_manager.get_user_by_email(email)
+            
+            if not user:
+                flash('No account found with this email address', 'error')
+                return render_template('auth/login.html')
+            
+            # Check rate limiting
+            if not otp_system.can_send_otp(email):
+                flash('Too many OTP requests. Please wait before requesting another code.', 'error')
+                return render_template('auth/login.html')
+            
+            # Generate and send OTP
+            otp = otp_system.generate_otp()
+            if otp_system.send_otp_email(email, otp):
+                otp_system.store_otp(email, otp)
+                otp_system.record_otp_attempt(email)
+                session['otp_email'] = email
+                flash('OTP sent to your email address', 'success')
+                return redirect(url_for('verify_otp'))
+            else:
+                flash('Failed to send OTP. Please try again.', 'error')
+        
+        else:
+            # Handle password login form submission
+            username = request.form['username']
+            password = request.form['password']
+            remember_me = request.form.get('remember_me') == 'on'
+            
+            # Use UserManager for proper user authentication
+            user_manager = UserManager()
+            user = user_manager.get_user_by_username(username)
+            
+            if user and user_manager.verify_password(password, user['password_hash']):
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['full_name'] = user.get('full_name', '')
+                if remember_me:
+                    session.permanent = True
+                else:
+                    session.permanent = False
+                
+                # Update last login
+                user_manager.update_last_login(user['id'])
+                
+                next_page = request.args.get('next')
+                return redirect(next_page) if next_page else redirect(url_for('index'))
+            else:
+                flash('Invalid username or password', 'error')
+    
+    return render_template('auth/login.html')
+
+@app.route('/login-password', methods=['GET', 'POST'])
+def login_password():
+    """Password-only login page for direct access"""
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -2356,7 +2424,7 @@ def login():
         else:
             flash('Invalid username or password', 'error')
     
-    return render_template('auth/login.html')
+    return render_template('auth/login_password.html')
 
 # =====================================
 #   OTP LOGIN ROUTES
@@ -4508,6 +4576,7 @@ def api_geographic_data():
         print(f"Geographic chart filters: {filters}")
         print(f"Generated WHERE clause: {where_clause}")
         print(f"Filter parameters: {filter_params}")
+        print(f"Filter structure validation: {type(filters)} - {filters}")
         
         # Build base WHERE conditions
         base_conditions = [f"{location_column} IS NOT NULL"]

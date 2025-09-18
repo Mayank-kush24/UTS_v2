@@ -407,17 +407,20 @@
                                             <div class="col-md-3">
                                                 <label for="geoFilterOperator" class="form-label">Operator:</label>
                                                 <select class="form-control" id="geoFilterOperator">
-                                                    <option value="=">=</option>
-                                                    <option value="!=">!=</option>
-                                                    <option value=">">></option>
-                                                    <option value="<"><</option>
-                                                    <option value=">=">>=</option>
-                                                    <option value="<="><=</option>
-                                                    <option value="LIKE">Contains</option>
-                                                    <option value="NOT LIKE">Does not contain</option>
-                                                    <option value="IN">In list</option>
-                                                    <option value="IS NULL">Is null</option>
-                                                    <option value="IS NOT NULL">Is not null</option>
+                                                    <option value="equals">Equals</option>
+                                                    <option value="not_equals">Not equals</option>
+                                                    <option value="greater_than">Greater than</option>
+                                                    <option value="less_than">Less than</option>
+                                                    <option value="greater_equal">Greater or equal</option>
+                                                    <option value="less_equal">Less or equal</option>
+                                                    <option value="contains">Contains</option>
+                                                    <option value="not_contains">Does not contain</option>
+                                                    <option value="starts_with">Starts with</option>
+                                                    <option value="ends_with">Ends with</option>
+                                                    <option value="in">In list</option>
+                                                    <option value="not_in">Not in list</option>
+                                                    <option value="is_null">Is null</option>
+                                                    <option value="is_not_null">Is not null</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-3">
@@ -2566,7 +2569,7 @@ function addGeoFilter() {
         return;
     }
     
-    if (!value && !['IS NULL', 'IS NOT NULL'].includes(operator)) {
+    if (!value && !['is_null', 'is_not_null'].includes(operator)) {
         alert('Please enter a filter value');
         return;
     }
@@ -2574,7 +2577,7 @@ function addGeoFilter() {
     // Check if filter already exists
     const existingFilter = geoFilters.groups.find(group => 
         group.conditions && group.conditions.some(condition => 
-            condition.column === column && condition.operator === operator && condition.value === value
+            condition.field === column && condition.operation === operator && condition.value === value
         )
     );
     if (existingFilter) {
@@ -2584,8 +2587,8 @@ function addGeoFilter() {
     
     const filter = {
         id: Date.now(),
-        column: column,
-        operator: operator,
+        field: column,
+        operation: operator,
         value: value
     };
     
@@ -2647,14 +2650,26 @@ function updateActiveGeoFilters() {
     geoFilters.groups.forEach(group => {
         if (group.conditions) {
             group.conditions.forEach(filter => {
-                const displayValue = ['IS NULL', 'IS NOT NULL'].includes(filter.operator) ? '' : `: ${filter.value}`;
-                const operatorText = filter.operator === 'LIKE' ? 'contains' : 
-                                   filter.operator === 'NOT LIKE' ? 'does not contain' : 
-                                   filter.operator;
+                const displayValue = ['is_null', 'is_not_null'].includes(filter.operation) ? '' : `: ${filter.value}`;
+                const operatorText = filter.operation === 'contains' ? 'contains' : 
+                                   filter.operation === 'not_contains' ? 'does not contain' : 
+                                   filter.operation === 'starts_with' ? 'starts with' :
+                                   filter.operation === 'ends_with' ? 'ends with' :
+                                   filter.operation === 'equals' ? 'equals' :
+                                   filter.operation === 'not_equals' ? 'not equals' :
+                                   filter.operation === 'greater_than' ? 'greater than' :
+                                   filter.operation === 'less_than' ? 'less than' :
+                                   filter.operation === 'greater_equal' ? 'greater or equal' :
+                                   filter.operation === 'less_equal' ? 'less or equal' :
+                                   filter.operation === 'in' ? 'in' :
+                                   filter.operation === 'not_in' ? 'not in' :
+                                   filter.operation === 'is_null' ? 'is null' :
+                                   filter.operation === 'is_not_null' ? 'is not null' :
+                                   filter.operation;
                 
                 html += `
                     <span class="badge bg-info d-flex align-items-center">
-                        <strong>${filter.column}</strong> ${operatorText} ${displayValue}
+                        <strong>${filter.field}</strong> ${operatorText} ${displayValue}
                         <button type="button" class="btn-close btn-close-white ms-2" 
                                 onclick="removeGeoFilter(${filter.id})" 
                                 style="font-size: 0.7em; padding: 0; width: 12px; height: 12px;">

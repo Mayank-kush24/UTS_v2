@@ -29,33 +29,33 @@
                     <small class="opacity-75 d-block mt-2">Trusted by 10,000+ developers worldwide</small>
                 </div>
                 
-                <!-- Enhanced Features Grid -->
+                <!-- OTP Features Grid -->
                 <div class="row text-center g-4 mt-4">
                     <div class="col-4">
                         <div class="feature-card">
                             <div class="feature-icon mb-3">
-                                <i class="fas fa-lock"></i>
+                                <i class="fas fa-envelope"></i>
                             </div>
-                            <h6 class="fw-semibold mb-2">Bank-Level Security</h6>
-                            <small class="opacity-80">End-to-end encryption</small>
+                            <h6 class="fw-semibold mb-2">Email OTP</h6>
+                            <small class="opacity-80">Primary login method</small>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="feature-card">
                             <div class="feature-icon mb-3">
-                                <i class="fas fa-rocket"></i>
+                                <i class="fas fa-clock"></i>
                             </div>
-                            <h6 class="fw-semibold mb-2">Lightning Fast</h6>
-                            <small class="opacity-80">Sub-second queries</small>
+                            <h6 class="fw-semibold mb-2">5 Min Expiry</h6>
+                            <small class="opacity-80">Secure time limit</small>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="feature-card">
                             <div class="feature-icon mb-3">
-                                <i class="fas fa-users-cog"></i>
+                                <i class="fas fa-shield-alt"></i>
                             </div>
-                            <h6 class="fw-semibold mb-2">Team Ready</h6>
-                            <small class="opacity-80">Built for collaboration</small>
+                            <h6 class="fw-semibold mb-2">Bank-Level</h6>
+                            <small class="opacity-80">Maximum security</small>
                         </div>
                     </div>
                 </div>
@@ -101,8 +101,11 @@
                     <div class="card-body p-5">
                         <!-- Header -->
                         <div class="text-center mb-5">
+                            <div class="otp-icon mb-3">
+                                <i class="fas fa-envelope-open-text text-primary" style="font-size: 3rem;"></i>
+                            </div>
                             <h2 class="login-title fw-bold mb-2">Welcome Back</h2>
-                            <p class="login-subtitle text-muted mb-0">Sign in to access your tracking system</p>
+                            <p class="login-subtitle text-muted mb-0">Enter your email to receive a secure login code</p>
                         </div>
 
                         <!-- Error Container -->
@@ -120,126 +123,139 @@
                             {% endwith %}
                         </div>
                         
-                        <form method="POST" id="loginForm" class="login-form" novalidate>
-                            <!-- Username Field -->
-                            <div class="form-group mb-4">
-                                <label for="username" class="form-label fw-semibold text-dark mb-2">
-                                    <i class="fas fa-user me-2 text-primary"></i>Username or Email
-                                </label>
-                                <input type="text" 
-                                       class="form-control form-control-lg login-input" 
-                                       id="username" 
-                                       name="username" 
-                                       placeholder="Enter your username or email"
-                                       required 
-                                       autocomplete="username"
-                                       aria-describedby="usernameHelp">
-                                <div class="invalid-feedback">
-                                    <i class="fas fa-exclamation-circle me-1"></i>Please enter a valid username or email.
-                                </div>
-                            </div>
-                            
-                            <!-- Password Field -->
-                            <div class="form-group mb-4">
-                                <label for="password" class="form-label fw-semibold text-dark mb-2">
-                                    <i class="fas fa-lock me-2 text-primary"></i>Password
-                                </label>
-                                <div class="password-input-container position-relative">
-                                    <input type="password" 
+                        <!-- Primary Login Method - Email OTP Form -->
+                        <div class="primary-login-method mb-4">
+                            <form method="POST" id="otpForm" class="login-form" novalidate>
+                                <!-- Email Field -->
+                                <div class="form-group mb-4">
+                                    <label for="email" class="form-label fw-semibold text-dark mb-2">
+                                        <i class="fas fa-envelope me-2 text-primary"></i>Email Address
+                                    </label>
+                                    <input type="email" 
                                            class="form-control form-control-lg login-input" 
-                                           id="password" 
-                                           name="password" 
-                                           placeholder="Enter your password"
+                                           id="email" 
+                                           name="email" 
+                                           placeholder="Enter your email address"
                                            required 
-                                           autocomplete="current-password"
-                                           aria-describedby="passwordHelp">
-                                    <button type="button" 
-                                            class="password-toggle" 
-                                            onclick="togglePassword()" 
-                                            aria-label="Toggle password visibility">
-                                        <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                                           autocomplete="email"
+                                           aria-describedby="emailHelp">
+                                    <div class="invalid-feedback">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Please enter a valid email address.
+                                    </div>
+                                </div>
+                                
+                                <!-- Send OTP Button -->
+                                <div class="d-grid mb-4">
+                                    <button type="submit" class="btn btn-primary btn-lg sign-in-btn">
+                                        <span class="btn-text">
+                                            <i class="fas fa-paper-plane me-2"></i>Send Login Code
+                                        </span>
+                                        <div class="btn-loading d-none">
+                                            <div class="spinner-border spinner-border-sm me-2"></div>
+                                            Sending code...
+                                        </div>
                                     </button>
                                 </div>
-                                <div class="invalid-feedback">
-                                    <i class="fas fa-exclamation-circle me-1"></i>Password is required.
-                                </div>
-                                <!-- Password strength indicator -->
-                                <div class="password-strength mt-2 d-none">
-                                    <div class="strength-bar">
-                                        <div class="strength-fill"></div>
-                                    </div>
-                                    <small class="strength-text text-muted"></small>
-                                </div>
-                            </div>
+                            </form>
                             
-                            <!-- Remember Me Modern Toggle -->
-                            <div class="form-group mb-4">
-                                <div class="remember-me-container d-flex align-items-center">
-                                    <label class="toggle-switch me-3">
-                                        <input type="checkbox" id="remember_me" name="remember_me">
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                    <div class="remember-text">
-                                        <label for="remember_me" class="fw-semibold text-dark mb-0">Remember me</label>
-                                        <small class="text-muted d-block">Stay signed in for faster access</small>
-                                    </div>
-                                </div>
+                            <div class="text-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    Secure, password-free login - we'll send you a code
+                                </small>
                             </div>
-                            
-                            <!-- Sign In Button -->
-                            <div class="d-grid mb-4">
-                                <button type="submit" class="btn btn-primary btn-lg sign-in-btn">
-                                    <span class="btn-text">
-                                        <i class="fas fa-sign-in-alt me-2"></i>Sign In Securely
-                                    </span>
-                                    <div class="btn-loading d-none">
-                                        <div class="spinner-border spinner-border-sm me-2"></div>
-                                        Signing in...
-                                    </div>
-                                </button>
-                            </div>
-                            
-                            <!-- Divider -->
+                        </div>
+                        
+                        <!-- Toggle Button -->
+                        <div class="text-center mb-4">
+                            <button type="button" id="togglePasswordForm" class="btn btn-link text-muted fw-semibold">
+                                <i class="fas fa-key me-1"></i>Use password instead
+                            </button>
+                        </div>
+                        
+                        <!-- Secondary Login Method - Password (Hidden by default) -->
+                        <div class="secondary-login-method" id="passwordLoginSection" style="display: none;">
                             <div class="divider my-4">
-                                <span class="divider-text text-muted fw-medium">or continue with</span>
+                                <span class="divider-text text-muted fw-medium">password login</span>
                             </div>
                             
-                            <!-- OTP Login Option -->
-                            <div class="otp-login-option mb-4">
-                                <div class="d-grid">
-                                    <a href="{{ url_for('login_otp') }}" class="btn btn-outline-primary btn-lg">
-                                        <i class="fas fa-envelope me-2"></i>Login with Email Code
-                                    </a>
-                                </div>
-                                <div class="text-center mt-2">
-                                    <small class="text-muted">
-                                        <i class="fas fa-shield-alt me-1"></i>
-                                        No password required - we'll send you a secure code
-                                    </small>
-                                </div>
-                            </div>
-                            
-                            <!-- SSO Options -->
-                            <div class="sso-options mb-4">
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <button type="button" class="btn btn-outline-secondary btn-lg w-100 sso-btn google-btn">
-                                            <i class="fab fa-google me-2"></i>Google
-                                        </button>
-                                    </div>
-                                    <div class="col-6">
-                                        <button type="button" class="btn btn-outline-dark btn-lg w-100 sso-btn github-btn">
-                                            <i class="fab fa-github me-2"></i>GitHub
-                                        </button>
+                            <form method="POST" id="loginForm" class="login-form" novalidate>
+                                <!-- Username Field -->
+                                <div class="form-group mb-3">
+                                    <label for="username" class="form-label fw-semibold text-dark mb-2">
+                                        <i class="fas fa-user me-2 text-secondary"></i>Username or Email
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control login-input" 
+                                           id="username" 
+                                           name="username" 
+                                           placeholder="Enter your username or email"
+                                           required 
+                                           autocomplete="username"
+                                           aria-describedby="usernameHelp">
+                                    <div class="invalid-feedback">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Please enter a valid username or email.
                                     </div>
                                 </div>
-                            </div>
-                        </form>
+                                
+                                <!-- Password Field -->
+                                <div class="form-group mb-3">
+                                    <label for="password" class="form-label fw-semibold text-dark mb-2">
+                                        <i class="fas fa-lock me-2 text-secondary"></i>Password
+                                    </label>
+                                    <div class="password-input-container position-relative">
+                                        <input type="password" 
+                                               class="form-control login-input" 
+                                               id="password" 
+                                               name="password" 
+                                               placeholder="Enter your password"
+                                               required 
+                                               autocomplete="current-password"
+                                               aria-describedby="passwordHelp">
+                                        <button type="button" 
+                                                class="password-toggle" 
+                                                onclick="togglePassword()" 
+                                                aria-label="Toggle password visibility">
+                                            <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                                        </button>
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Password is required.
+                                    </div>
+                                </div>
+                                
+                                <!-- Remember Me -->
+                                <div class="form-group mb-3">
+                                    <div class="remember-me-container d-flex align-items-center">
+                                        <label class="toggle-switch me-3">
+                                            <input type="checkbox" id="remember_me" name="remember_me">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <div class="remember-text">
+                                            <label for="remember_me" class="fw-semibold text-dark mb-0">Remember me</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Sign In Button -->
+                                <div class="d-grid mb-3">
+                                    <button type="submit" class="btn btn-outline-secondary btn-lg sign-in-btn">
+                                        <span class="btn-text">
+                                            <i class="fas fa-key me-2"></i>Sign In with Password
+                                        </span>
+                                        <div class="btn-loading d-none">
+                                            <div class="spinner-border spinner-border-sm me-2"></div>
+                                            Signing in...
+                                        </div>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                         
                         <!-- Register Link -->
                         <div class="text-center">
                             <p class="text-muted mb-0">
-                                New to DataVault Pro? 
+                                New to UTS 2.0? 
                                 <a href="{{ url_for('register') }}" class="btn btn-link p-0 fw-semibold register-link">
                                     Create your account <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
@@ -298,83 +314,148 @@ function togglePassword() {
 
 // Enhanced Form Validation and UX
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('loginForm');
-    const inputs = form.querySelectorAll('input[required]');
-    const submitBtn = form.querySelector('.sign-in-btn');
+    // OTP Form (Primary)
+    const otpForm = document.getElementById('otpForm');
+    const emailInput = document.getElementById('email');
+    const otpSubmitBtn = otpForm ? otpForm.querySelector('.sign-in-btn') : null;
     
-    // Auto-focus username field
-    document.getElementById('username').focus();
+    // Password Form (Secondary)
+    const passwordForm = document.getElementById('loginForm');
+    const passwordInputs = passwordForm ? passwordForm.querySelectorAll('input[required]') : [];
+    const passwordSubmitBtn = passwordForm ? passwordForm.querySelector('.sign-in-btn') : null;
     
-    // Remember me toggle feedback
-    const rememberMeToggle = document.getElementById('remember_me');
-    const rememberMeText = document.querySelector('.remember-text label');
+    // Toggle elements
+    const toggleButton = document.getElementById('togglePasswordForm');
+    const passwordSection = document.getElementById('passwordLoginSection');
     
-    rememberMeToggle.addEventListener('change', function() {
-        if (this.checked) {
-            rememberMeText.innerHTML = '<i class="fas fa-clock me-1"></i>Remember me';
-            console.log('Remember me enabled - session will last 30 days');
-        } else {
-            rememberMeText.innerHTML = 'Remember me';
-            console.log('Remember me disabled - session will expire when browser closes');
-        }
-    });
+    // Auto-focus email field (primary)
+    if (emailInput) {
+        emailInput.focus();
+    }
     
-    // Real-time validation
-    inputs.forEach(input => {
-        input.addEventListener('blur', validateField);
-        input.addEventListener('input', function() {
+    // Toggle password form visibility
+    if (toggleButton && passwordSection) {
+        toggleButton.addEventListener('click', function() {
+            if (passwordSection.style.display === 'none') {
+                // Show password form with smooth animation
+                passwordSection.style.display = 'block';
+                passwordSection.style.opacity = '0';
+                passwordSection.style.transform = 'translateY(-10px)';
+                
+                // Animate in
+                setTimeout(() => {
+                    passwordSection.style.transition = 'all 0.3s ease-in-out';
+                    passwordSection.style.opacity = '1';
+                    passwordSection.style.transform = 'translateY(0)';
+                }, 10);
+                
+                toggleButton.innerHTML = '<i class="fas fa-envelope me-1"></i>Use email code instead';
+                
+                // Focus on username field
+                const usernameInput = document.getElementById('username');
+                if (usernameInput) {
+                    setTimeout(() => usernameInput.focus(), 300);
+                }
+            } else {
+                // Hide password form with smooth animation
+                passwordSection.style.transition = 'all 0.3s ease-in-out';
+                passwordSection.style.opacity = '0';
+                passwordSection.style.transform = 'translateY(-10px)';
+                
+                // Hide after animation
+                setTimeout(() => {
+                    passwordSection.style.display = 'none';
+                }, 300);
+                
+                toggleButton.innerHTML = '<i class="fas fa-key me-1"></i>Use password instead';
+                
+                // Focus back on email field
+                if (emailInput) {
+                    emailInput.focus();
+                }
+            }
+        });
+    }
+    
+    // OTP Form handling
+    if (otpForm && otpSubmitBtn) {
+        // Real-time validation
+        emailInput.addEventListener('blur', validateEmail);
+        emailInput.addEventListener('input', function() {
             clearValidation(this);
-            if (this.id === 'password') {
-                checkPasswordStrength(this.value);
+        });
+        
+        // Form submission
+        otpForm.addEventListener('submit', function(e) {
+            if (!validateEmail()) {
+                e.preventDefault();
+                return;
             }
+            
+            // Show loading state
+            const btnText = otpSubmitBtn.querySelector('.btn-text');
+            const btnLoading = otpSubmitBtn.querySelector('.btn-loading');
+            
+            otpSubmitBtn.disabled = true;
+            otpSubmitBtn.classList.add('loading');
+            btnText.classList.add('d-none');
+            btnLoading.classList.remove('d-none');
         });
-        
-        // Enhanced focus effects
-        input.addEventListener('focus', function() {
-            this.closest('.form-group').classList.add('focused');
-        });
-        
-        input.addEventListener('blur', function() {
-            this.closest('.form-group').classList.remove('focused');
-        });
-    });
+    }
     
-    // Form submission with enhanced loading state
-    form.addEventListener('submit', function(e) {
-        if (!validateForm()) {
-            e.preventDefault();
-            return;
+    // Password Form handling
+    if (passwordForm && passwordSubmitBtn) {
+        // Remember me toggle feedback
+        const rememberMeToggle = document.getElementById('remember_me');
+        const rememberMeText = document.querySelector('.remember-text label');
+        
+        if (rememberMeToggle && rememberMeText) {
+            rememberMeToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    rememberMeText.innerHTML = '<i class="fas fa-clock me-1"></i>Remember me';
+                } else {
+                    rememberMeText.innerHTML = 'Remember me';
+                }
+            });
         }
         
-        // Debug: Log remember me checkbox state
-        const rememberMeCheckbox = document.getElementById('remember_me');
-        console.log('Remember me checkbox checked:', rememberMeCheckbox.checked);
-        console.log('Remember me checkbox value:', rememberMeCheckbox.value);
+        // Real-time validation
+        passwordInputs.forEach(input => {
+            input.addEventListener('blur', validateField);
+            input.addEventListener('input', function() {
+                clearValidation(this);
+            });
+        });
         
-        // Ensure checkbox value is properly set for form submission
-        if (rememberMeCheckbox.checked) {
-            rememberMeCheckbox.value = 'on';
-        }
-        
-        // Show loading state
-        const btnText = submitBtn.querySelector('.btn-text');
-        const btnLoading = submitBtn.querySelector('.btn-loading');
-        
-        submitBtn.disabled = true;
-        submitBtn.classList.add('loading');
-        btnText.classList.add('d-none');
-        btnLoading.classList.remove('d-none');
-        
-        // Add some visual feedback
-        submitBtn.style.transform = 'scale(0.98)';
-        
-        // Reset if needed (fallback)
-        setTimeout(() => {
-            if (submitBtn.disabled) {
-                resetSubmitButton();
+        // Form submission
+        passwordForm.addEventListener('submit', function(e) {
+            if (!validatePasswordForm()) {
+                e.preventDefault();
+                return;
             }
-        }, 10000);
-    });
+            
+            // Show loading state
+            const btnText = passwordSubmitBtn.querySelector('.btn-text');
+            const btnLoading = passwordSubmitBtn.querySelector('.btn-loading');
+            
+            passwordSubmitBtn.disabled = true;
+            passwordSubmitBtn.classList.add('loading');
+            btnText.classList.add('d-none');
+            btnLoading.classList.remove('d-none');
+        });
+    }
+    
+    function validateEmail() {
+        if (!emailInput) return true;
+        const email = emailInput.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const isValid = emailRegex.test(email);
+        
+        emailInput.classList.toggle('is-valid', isValid && email.length > 0);
+        emailInput.classList.toggle('is-invalid', !isValid && email.length > 0);
+        
+        return isValid;
+    }
     
     function validateField(e) {
         const field = e.target;
@@ -382,232 +463,48 @@ document.addEventListener('DOMContentLoaded', function() {
         
         field.classList.toggle('is-valid', isValid && field.value.length > 0);
         field.classList.toggle('is-invalid', !isValid && field.value.length > 0);
-        
-        // Show custom validation messages
-        if (!isValid && field.value.length > 0) {
-            showFieldError(field);
-        }
     }
     
     function clearValidation(field) {
         field.classList.remove('is-valid', 'is-invalid');
     }
     
-    function validateForm() {
+    function validatePasswordForm() {
+        if (!passwordForm) return true;
         let isValid = true;
-        const errors = [];
         
-        inputs.forEach(input => {
+        passwordInputs.forEach(input => {
             if (!input.checkValidity()) {
                 input.classList.add('is-invalid');
                 isValid = false;
-                
-                if (input.id === 'username') {
-                    errors.push('Please enter a valid username or email');
-                } else if (input.id === 'password') {
-                    errors.push('Password is required');
-                }
             } else {
                 input.classList.add('is-valid');
             }
         });
         
-        if (!isValid) {
-            showInlineError(errors[0]);
-            // Shake animation for form
-            form.classList.add('shake');
-            setTimeout(() => form.classList.remove('shake'), 600);
-        }
-        
         return isValid;
     }
-    
-    function showFieldError(field) {
-        // Add custom error styling
-        field.style.borderColor = 'var(--error)';
-        field.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
-    }
-    
-    function showInlineError(message) {
-        const errorContainer = document.getElementById('errorContainer');
-        const existingAlert = errorContainer.querySelector('.alert');
-        
-        if (existingAlert) {
-            existingAlert.remove();
-        }
-        
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-danger alert-dismissible fade show login-alert';
-        alert.innerHTML = `
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        errorContainer.appendChild(alert);
-        
-        // Auto-dismiss after 5 seconds
-        setTimeout(() => {
-            if (alert.parentNode) {
-                alert.remove();
-            }
-        }, 5000);
-    }
-    
-    function resetSubmitButton() {
-        const btnText = submitBtn.querySelector('.btn-text');
-        const btnLoading = submitBtn.querySelector('.btn-loading');
-        
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('loading');
-        btnText.classList.remove('d-none');
-        btnLoading.classList.add('d-none');
-        submitBtn.style.transform = '';
-    }
-    
-    // Password strength checker
-    function checkPasswordStrength(password) {
-        const strengthContainer = document.querySelector('.password-strength');
-        const strengthFill = document.querySelector('.strength-fill');
-        const strengthText = document.querySelector('.strength-text');
-        
-        if (password.length === 0) {
-            strengthContainer.classList.add('d-none');
-            return;
-        }
-        
-        strengthContainer.classList.remove('d-none');
-        
-        let strength = 0;
-        let feedback = '';
-        
-        // Basic strength calculation
-        if (password.length >= 8) strength += 25;
-        if (/[a-z]/.test(password)) strength += 15;
-        if (/[A-Z]/.test(password)) strength += 15;
-        if (/[0-9]/.test(password)) strength += 15;
-        if (/[^A-Za-z0-9]/.test(password)) strength += 30;
-        
-        // Set strength level and color
-        if (strength < 30) {
-            strengthFill.style.width = '25%';
-            strengthFill.style.backgroundColor = 'var(--error)';
-            feedback = 'Weak password';
-        } else if (strength < 60) {
-            strengthFill.style.width = '50%';
-            strengthFill.style.backgroundColor = 'var(--warning)';
-            feedback = 'Fair password';
-        } else if (strength < 80) {
-            strengthFill.style.width = '75%';
-            strengthFill.style.backgroundColor = '#3b82f6';
-            feedback = 'Good password';
-        } else {
-            strengthFill.style.width = '100%';
-            strengthFill.style.backgroundColor = 'var(--success)';
-            feedback = 'Strong password';
-        }
-        
-        strengthText.textContent = feedback;
-    }
 });
-
-// SSO Button Handlers
-document.querySelectorAll('.sso-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const provider = this.classList.contains('google-btn') ? 'Google' : 'GitHub';
-        
-        // Add loading state
-        const originalContent = this.innerHTML;
-        this.disabled = true;
-        this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Connecting...';
-        
-        // Simulate SSO redirect (replace with actual implementation)
-        setTimeout(() => {
-            console.log(`SSO login with ${provider} initiated`);
-            showToast(`${provider} SSO will be available soon`, 'info');
-            
-            // Reset button
-            this.disabled = false;
-            this.innerHTML = originalContent;
-        }, 2000);
-    });
-});
-
-// Enhanced Toast Function
-function showToast(message, type = 'info') {
-    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
-    
-    const iconMap = {
-        'success': 'fas fa-check-circle',
-        'error': 'fas fa-exclamation-circle',
-        'info': 'fas fa-info-circle',
-        'warning': 'fas fa-exclamation-triangle'
-    };
-    
-    const colorMap = {
-        'success': 'success',
-        'error': 'danger',
-        'info': 'info',
-        'warning': 'warning'
-    };
-    
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${colorMap[type]} border-0 shadow-lg`;
-    toast.setAttribute('role', 'alert');
-    toast.style.borderRadius = '12px';
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="${iconMap[type]} me-2"></i>
-                ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    
-    toastContainer.appendChild(toast);
-    const bsToast = new bootstrap.Toast(toast, {
-        autohide: true,
-        delay: 4000
-    });
-    bsToast.show();
-    
-    toast.addEventListener('hidden.bs.toast', () => toast.remove());
-}
-
-function createToastContainer() {
-    const container = document.createElement('div');
-    container.id = 'toastContainer';
-    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-    container.style.zIndex = '1055';
-    document.body.appendChild(container);
-    return container;
-}
 
 // Keyboard shortcuts
 document.addEventListener('keydown', function(e) {
-    // Alt + L to focus login
+    // Alt + L to focus email field
     if (e.altKey && e.key === 'l') {
         e.preventDefault();
-        document.getElementById('username').focus();
+        const emailInput = document.getElementById('email');
+        if (emailInput) {
+            emailInput.focus();
+        }
     }
     
-    // Ctrl + Enter to submit form
+    // Ctrl + Enter to submit OTP form
     if (e.ctrlKey && e.key === 'Enter') {
         e.preventDefault();
-        document.getElementById('loginForm').requestSubmit();
+        const otpForm = document.getElementById('otpForm');
+        if (otpForm) {
+            otpForm.requestSubmit();
+        }
     }
 });
-
-// Add accessibility announcements
-const announcer = document.createElement('div');
-announcer.setAttribute('aria-live', 'polite');
-announcer.setAttribute('aria-atomic', 'true');
-announcer.className = 'sr-only';
-document.body.appendChild(announcer);
-
-function announce(message) {
-    announcer.textContent = message;
-}
 </script>
 {% endblock %}
