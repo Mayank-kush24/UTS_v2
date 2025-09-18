@@ -4,26 +4,28 @@
 
 {% block content %}
 <!-- Override container for full-width dashboard -->
-<div class="container-fluid px-4">
+<div class="container-fluid dashboard-container">
     <!-- Main Dashboard Content -->
     <div class="dashboard-content">
         <!-- Header Section -->
-        <div class="row mb-4">
+        <div class="row mb-5">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h1 class="mb-2 text-gradient">
-                            <i class="fas fa-tachometer-alt me-2 pulse-glow"></i>Database Dashboard
-                        </h1>
-                        <p class="text-muted mb-0 fw-medium">Real-time monitoring and data exploration</p>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary icon-hover" onclick="refreshDashboard()">
-                            <i class="fas fa-sync-alt me-1" id="refreshIcon"></i>Refresh
-                        </button>
-                        <button class="btn btn-outline-success icon-hover" onclick="checkConnection()" id="connectionBtn">
-                            <i class="fas fa-plug me-1"></i>Test Connection
-                        </button>
+                <div class="dashboard-header">
+                    <div class="header-content">
+                        <div class="header-text">
+                            <h1 class="dashboard-title">
+                                <i class="fas fa-tachometer-alt me-3 pulse-glow"></i>Database Dashboard
+                            </h1>
+                            <p class="dashboard-subtitle">Real-time monitoring and data exploration</p>
+                        </div>
+                        <div class="header-actions">
+                            <button class="btn btn-outline-primary btn-action" onclick="refreshDashboard()">
+                                <i class="fas fa-sync-alt me-2" id="refreshIcon"></i>Refresh
+                            </button>
+                            <button class="btn btn-outline-success btn-action" onclick="checkConnection()" id="connectionBtn">
+                                <i class="fas fa-plug me-2"></i>Test Connection
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -31,50 +33,50 @@
 
 
 <!-- Status Cards Row -->
-<div class="row mb-4">
+<div class="row mb-5">
     <!-- Connection Status Card -->
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card h-100 {{ 'border-success pulse-glow' if connection_status else 'border-danger' }}">
-            <div class="card-body text-center">
-                <div class="connection-indicator mb-3 {{ 'connected floating' if connection_status }}">
-                    <i class="fas fa-{{ 'check-circle' if connection_status else 'times-circle' }} fa-3x text-{{ 'success' if connection_status else 'danger' }}"></i>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="status-card h-100 {{ 'status-connected' if connection_status else 'status-disconnected' }}">
+            <div class="card-body">
+                <div class="status-icon {{ 'connected floating' if connection_status }}">
+                    <i class="fas fa-{{ 'check-circle' if connection_status else 'times-circle' }} fa-3x"></i>
                 </div>
-                <h5 class="card-title fw-semibold">Connection Status</h5>
-                <p class="card-text">
-                    <span class="badge bg-{{ 'success' if connection_status else 'danger' }} fs-6" id="connectionStatus">
+                <h5 class="status-title">Connection Status</h5>
+                <div class="status-content">
+                    <span class="status-badge {{ 'badge-success' if connection_status else 'badge-danger' }}" id="connectionStatus">
                         {{ 'Connected' if connection_status else 'Disconnected' }}
                     </span>
                     {% if connection_status %}
-                    <div class="mt-2">
-                        <button class="btn btn-outline-danger btn-sm icon-hover" onclick="disconnectFromDashboard()">
+                    <div class="status-actions">
+                        <button class="btn btn-outline-danger btn-sm" onclick="disconnectFromDashboard()" id="disconnectBtn">
                             <i class="fas fa-unlink me-1"></i>Disconnect
                         </button>
                     </div>
                     {% endif %}
-                </p>
-                <small class="text-muted" id="lastChecked">Last checked: Just now</small>
+                </div>
+                <small class="status-meta" id="lastChecked">Last checked: Just now</small>
             </div>
         </div>
     </div>
 
     <!-- Database Info Card -->
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <div class="database-icon mb-3">
-                    <i class="fas fa-database fa-3x text-primary"></i>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="status-card h-100 status-database">
+            <div class="card-body">
+                <div class="status-icon">
+                    <i class="fas fa-database fa-3x"></i>
                 </div>
-                <h5 class="card-title fw-semibold">Tables Size</h5>
-                <p class="card-text">
-                    <span class="badge bg-primary fs-6" id="databaseName">
+                <h5 class="status-title">Database Info</h5>
+                <div class="status-content">
+                    <span class="status-badge badge-primary" id="databaseName">
                         {% if stats and stats.database_name %}
                             {{ stats.database_name }}
                         {% else %}
                             Not Connected
                         {% endif %}
                     </span>
-                </p>
-                <small class="text-muted" id="dbSize">
+                </div>
+                <small class="status-meta" id="dbSize">
                     {% if stats and stats.database_size %}
                         Total: {{ stats.database_size }}
                     {% else %}
@@ -86,19 +88,19 @@
     </div>
 
     <!-- Tables Count Card -->
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <div class="tables-icon mb-3">
-                    <i class="fas fa-table fa-3x text-info"></i>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="status-card h-100 status-tables">
+            <div class="card-body">
+                <div class="status-icon">
+                    <i class="fas fa-table fa-3x"></i>
                 </div>
-                <h5 class="card-title fw-semibold">Tables</h5>
-                <p class="card-text">
-                    <span class="badge bg-info fs-6" id="tablesCount">
+                <h5 class="status-title">Tables</h5>
+                <div class="status-content">
+                    <span class="status-badge badge-info" id="tablesCount">
                         {{ tables|length if tables else '0' }}
                     </span>
-                </p>
-                <small class="text-muted">
+                </div>
+                <small class="status-meta">
                     {% if tables %}
                         {{ tables|length }} table{{ 's' if tables|length != 1 else '' }} available
                     {% else %}
@@ -110,23 +112,23 @@
     </div>
 
     <!-- Total Records Card -->
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <div class="records-icon mb-3">
-                    <i class="fas fa-list-ol fa-3x text-warning"></i>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="status-card h-100 status-records">
+            <div class="card-body">
+                <div class="status-icon">
+                    <i class="fas fa-list-ol fa-3x"></i>
                 </div>
-                <h5 class="card-title fw-semibold">Total Records</h5>
-                <p class="card-text">
-                    <span class="badge bg-warning fs-6" id="totalRecords">
+                <h5 class="status-title">Total Records</h5>
+                <div class="status-content">
+                    <span class="status-badge badge-warning" id="totalRecords">
                         {% if stats and stats.table_stats %}
                             {{ "{:,}".format(stats.table_stats|sum(attribute=5)) }}
                         {% else %}
                             0
                         {% endif %}
                     </span>
-                </p>
-                <small class="text-muted">
+                </div>
+                <small class="status-meta">
                     {% if stats and stats.table_stats %}
                         Across all tables
                     {% else %}
@@ -140,21 +142,24 @@
 
 <!-- Tables Overview Section -->
 {% if connection_status and tables %}
-<div class="row mb-4">
+<div class="row mb-5">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-table me-2"></i>Database Tables
-                </h5>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-outline-primary btn-sm" onclick="toggleTableView()">
-                                <i class="fas fa-th-large me-1"></i>Card View
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="refreshTableStats()">
-                                <i class="fas fa-sync-alt me-1"></i>Refresh Stats
-                            </button>
-                        </div>
+        <div class="tables-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table me-3"></i>Database Tables
+                    </h5>
+                    <p class="section-subtitle mb-0">Explore and manage your database tables</p>
+                </div>
+                <div class="section-actions">
+                    <button class="btn btn-outline-primary btn-sm" onclick="toggleTableView()">
+                        <i class="fas fa-th-large me-2"></i>Card View
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="refreshTableStats()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh Stats
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <!-- Search Bar -->
@@ -266,40 +271,55 @@
 {% endif %}
 
 <!-- Quick Actions Section -->
-<div class="row">
+<div class="row mb-5">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-bolt me-2"></i>Quick Actions
-                </h5>
+        <div class="quick-actions-section">
+            <div class="section-header">
+                <div class="section-title">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt me-3"></i>Quick Actions
+                    </h5>
+                    <p class="section-subtitle mb-0">Access common database management tasks</p>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-3 col-sm-6">
-                        <a href="/databases" class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
-                            <i class="fas fa-database fa-2x mb-2"></i>
-                            <span>Manage Databases</span>
-                        </a>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <a href="/visualizations" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
-                            <i class="fas fa-chart-line fa-2x mb-2"></i>
-                            <span>Create Visualizations</span>
-                        </a>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <a href="/config" class="btn btn-outline-secondary w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
-                            <i class="fas fa-cog fa-2x mb-2"></i>
-                            <span>System Settings</span>
-                        </a>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <button class="btn btn-outline-success w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3" onclick="refreshDashboard()">
-                            <i class="fas fa-sync-alt fa-2x mb-2"></i>
-                            <span>Refresh All Data</span>
-                        </button>
-                    </div>
+            <div class="section-content">
+                <div class="actions-grid">
+                    <a href="/databases" class="action-card action-primary">
+                        <div class="action-icon">
+                            <i class="fas fa-database fa-2x"></i>
+                        </div>
+                        <div class="action-content">
+                            <h6 class="action-title">Manage Databases</h6>
+                            <p class="action-description">Connect and configure database connections</p>
+                        </div>
+                    </a>
+                    <a href="/visualizations" class="action-card action-info">
+                        <div class="action-icon">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                        <div class="action-content">
+                            <h6 class="action-title">Create Visualizations</h6>
+                            <p class="action-description">Build charts and data visualizations</p>
+                        </div>
+                    </a>
+                    <a href="/config" class="action-card action-secondary">
+                        <div class="action-icon">
+                            <i class="fas fa-cog fa-2x"></i>
+                        </div>
+                        <div class="action-content">
+                            <h6 class="action-title">System Settings</h6>
+                            <p class="action-description">Configure application preferences</p>
+                        </div>
+                    </a>
+                    <button class="action-card action-success" onclick="refreshDashboard()">
+                        <div class="action-icon">
+                            <i class="fas fa-sync-alt fa-2x"></i>
+                        </div>
+                        <div class="action-content">
+                            <h6 class="action-title">Refresh All Data</h6>
+                            <p class="action-description">Reload dashboard and table statistics</p>
+                        </div>
+                    </button>
                 </div>
             </div>
         </div>
@@ -310,18 +330,532 @@
 
 {% block styles %}
 <style>
+/* Dashboard Container */
+.dashboard-container {
+    padding: 2rem 2.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    min-height: 100vh;
+}
+
 /* Dashboard Content */
 .dashboard-content {
     width: 100%;
-    background: #f8f9fa !important;
-    min-height: calc(100vh - 200px);
+    background: transparent;
 }
 
-/* Override Bootstrap container styles for dashboard */
-.container-fluid.px-4 {
-    max-width: none !important;
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+/* Dashboard Header */
+.dashboard-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 2rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.header-text {
+    flex: 1;
+    min-width: 300px;
+}
+
+.dashboard-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-subtitle {
+    font-size: 1.1rem;
+    color: #6c757d;
+    font-weight: 500;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-action {
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border-width: 2px;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Status Cards */
+.status-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.status-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.status-card .card-body {
+    padding: 2rem;
+    text-align: center;
+}
+
+.status-icon {
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.status-icon i {
+    transition: all 0.3s ease;
+}
+
+.status-card:hover .status-icon i {
+    transform: scale(1.1);
+}
+
+.status-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+.status-content {
+    margin-bottom: 1rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transition: all 0.3s ease;
+}
+
+.badge-success {
+    background: linear-gradient(135deg, #28a745, #20c997) !important;
+    color: white !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.badge-danger {
+    background: linear-gradient(135deg, #dc3545, #fd7e14) !important;
+    color: white !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.badge-primary {
+    background: linear-gradient(135deg, #007bff, #6610f2);
+    color: white;
+}
+
+.badge-info {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+    color: white;
+}
+
+.badge-warning {
+    background: linear-gradient(135deg, #ffc107, #fd7e14);
+    color: #212529;
+}
+
+.status-meta {
+    color: #6c757d;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-actions {
+    margin-top: 1rem;
+}
+
+/* Connection Status Specific */
+.status-connected {
+    border-left: 4px solid #28a745;
+}
+
+.status-disconnected {
+    border-left: 4px solid #dc3545;
+}
+
+.status-database {
+    border-left: 4px solid #007bff;
+}
+
+.status-tables {
+    border-left: 4px solid #17a2b8;
+}
+
+.status-records {
+    border-left: 4px solid #ffc107;
+}
+
+/* Tables Section */
+.tables-section {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 2rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.section-title h5 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.section-subtitle {
+    color: #6c757d;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.section-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.section-content {
+    padding: 2rem;
+}
+
+.search-section {
+    margin-bottom: 2rem;
+}
+
+.search-section .input-group {
+    max-width: 400px;
+}
+
+.search-section .form-control {
+    border-radius: 12px;
+    border: 2px solid #e9ecef;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.search-section .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.search-section .input-group-text {
+    border-radius: 12px 0 0 12px;
+    border: 2px solid #e9ecef;
+    border-right: none;
+    background: #f8f9fa;
+}
+
+.search-section .btn {
+    border-radius: 0 12px 12px 0;
+    border: 2px solid #e9ecef;
+    border-left: none;
+}
+
+/* Table Cards */
+.table-card {
+    margin-bottom: 1.5rem;
+}
+
+.table-card .card {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.table-card .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.table-card .card-body {
+    padding: 1.5rem;
+}
+
+.table-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+.table-card .card-footer {
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.table-card .btn {
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+}
+
+/* Quick Actions Section */
+.quick-actions-section {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.action-card {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    text-decoration: none;
+    color: inherit;
+}
+
+.action-card:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.action-icon {
+    margin-right: 1.5rem;
+    flex-shrink: 0;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.action-content {
+    flex: 1;
+}
+
+.action-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.action-description {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Action Card Variants */
+.action-primary {
+    border-left: 4px solid #007bff;
+}
+
+.action-primary:hover {
+    border-color: #007bff;
+    background: rgba(0, 123, 255, 0.05);
+}
+
+.action-primary .action-icon {
+    background: linear-gradient(135deg, #007bff, #6610f2);
+    color: white;
+}
+
+.action-info {
+    border-left: 4px solid #17a2b8;
+}
+
+.action-info:hover {
+    border-color: #17a2b8;
+    background: rgba(23, 162, 184, 0.05);
+}
+
+.action-info .action-icon {
+    background: linear-gradient(135deg, #17a2b8, #6f42c1);
+    color: white;
+}
+
+.action-secondary {
+    border-left: 4px solid #6c757d;
+}
+
+.action-secondary:hover {
+    border-color: #6c757d;
+    background: rgba(108, 117, 125, 0.05);
+}
+
+.action-secondary .action-icon {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+}
+
+.action-success {
+    border-left: 4px solid #28a745;
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+
+.action-success:hover {
+    border-color: #28a745;
+    background: rgba(40, 167, 69, 0.05);
+}
+
+.action-success .action-icon {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 1rem;
+    }
+    
+    .dashboard-header {
+        padding: 1.5rem;
+    }
+    
+    .dashboard-title {
+        font-size: 2rem;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .status-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    .section-header {
+        padding: 1.5rem;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .section-content {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-container {
+        padding: 0.5rem;
+    }
+    
+    .dashboard-header {
+        padding: 1rem;
+        border-radius: 12px;
+    }
+    
+    .dashboard-title {
+        font-size: 1.75rem;
+    }
+    
+    .status-card .card-body {
+        padding: 1rem;
+    }
+    
+    .section-header {
+        padding: 1rem;
+    }
+    
+    .section-content {
+        padding: 1rem;
+    }
+    
+    .actions-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .action-card {
+        padding: 1rem;
+    }
+    
+    .action-icon {
+        width: 50px;
+        height: 50px;
+        margin-right: 1rem;
+    }
+    
+    .action-title {
+        font-size: 1rem;
+    }
+    
+    .action-description {
+        font-size: 0.85rem;
+    }
 }
 
 
@@ -521,10 +1055,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize SQL editor
     initializeSQLEditor();
     
+    // Setup disconnect button event listener as backup
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    if (disconnectBtn) {
+        console.log('Disconnect button found, adding event listener'); // Debug log
+        disconnectBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Disconnect button clicked via event listener'); // Debug log
+            disconnectFromDashboard();
+        });
+    } else {
+        console.log('Disconnect button not found'); // Debug log
+    }
+    
     // Load table stats with a small delay to ensure DOM is ready
     setTimeout(() => {
         loadTableStats();
     }, 100);
+    
+    // Ensure connection status is properly initialized
+    setTimeout(() => {
+        initializeConnectionStatus();
+    }, 200);
     
     initializeTableDropdowns();
     addClickOutsideToClose();
@@ -613,8 +1165,19 @@ async function updateConnectionStatus() {
         const lastCheckedElement = document.getElementById('lastChecked');
         
         if (statusElement) {
-            statusElement.textContent = data.success ? 'Connected' : 'Disconnected';
-            statusElement.className = `badge bg-${data.success ? 'success' : 'danger'} fs-6`;
+            const newText = data.success ? 'Connected' : 'Disconnected';
+            const newClass = `status-badge ${data.success ? 'badge-success' : 'badge-danger'}`;
+            
+            console.log('Updating connection status:', {
+                success: data.success,
+                newText: newText,
+                newClass: newClass,
+                currentClass: statusElement.className
+            });
+            
+            statusElement.textContent = newText;
+            // Use custom CSS classes instead of Bootstrap classes
+            statusElement.className = newClass;
         }
         
         if (lastCheckedElement) {
@@ -870,12 +1433,32 @@ async function checkConnection() {
 
 // Disconnect from dashboard
 async function disconnectFromDashboard() {
+    console.log('Disconnect button clicked'); // Debug log
+    
+    if (!confirm('Are you sure you want to disconnect from the current database?')) {
+        console.log('User cancelled disconnect'); // Debug log
+        return;
+    }
+    
     try {
+        console.log('Starting disconnect process'); // Debug log
         showLoading(true);
-        const response = await fetch('/api/connection/disconnect', {
-            method: 'POST'
+        
+        const response = await fetch('/api/disconnect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
         });
+        
+        console.log('Disconnect response status:', response.status); // Debug log
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Disconnect response data:', data); // Debug log
         
         if (data.success) {
             showToast('Disconnected successfully!', 'success');
@@ -883,21 +1466,49 @@ async function disconnectFromDashboard() {
                 window.location.reload();
             }, 1000);
         } else {
-            showToast('Disconnect failed: ' + data.error, 'error');
+            showToast('Disconnect failed: ' + (data.message || data.error || 'Unknown error'), 'error');
         }
     } catch (error) {
+        console.error('Disconnect error:', error); // Debug log
         showToast('Disconnect error: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
 }
 
+// Make disconnect function globally accessible
+window.disconnectFromDashboard = disconnectFromDashboard;
+
+// Initialize connection status on page load
+function initializeConnectionStatus() {
+    const statusElement = document.getElementById('connectionStatus');
+    if (statusElement) {
+        console.log('Initializing connection status:', {
+            currentClass: statusElement.className,
+            currentText: statusElement.textContent
+        });
+        
+        // Ensure the element has the correct classes
+        if (statusElement.textContent === 'Connected') {
+            statusElement.className = 'status-badge badge-success';
+        } else if (statusElement.textContent === 'Disconnected') {
+            statusElement.className = 'status-badge badge-danger';
+        }
+        
+        console.log('Connection status initialized:', {
+            newClass: statusElement.className,
+            text: statusElement.textContent
+        });
+    }
+}
+
 // Auto refresh
 function startAutoRefresh() {
     refreshInterval = setInterval(() => {
+        console.log('Auto-refresh: Updating connection status'); // Debug log
         updateConnectionStatus();
         loadTableStats(true, false); // Use fast mode, don't force refresh
-    }, 30000); // Refresh every 30 seconds
+    }, 60000); // Refresh every 60 seconds (reduced frequency)
 }
 
 // Stop auto refresh

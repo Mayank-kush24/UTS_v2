@@ -1,0 +1,22 @@
+# Email Configuration for OTP Login System
+# Copy these settings to your .env file
+
+# Flask Configuration
+SECRET_KEY=your-secret-key-here
+
+# Email Configuration for OTP Login
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=True
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-app-password
+MAIL_DEFAULT_SENDER=noreply@uts2.com
+
+# Database Configuration (if using PostgreSQL)
+# DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+
+# Gmail Setup Instructions:
+# 1. Enable 2-Factor Authentication on your Gmail account
+# 2. Generate an App Password: Google Account → Security → App passwords
+# 3. Use the App Password in MAIL_PASSWORD (not your regular password)
+# 4. Make sure "Less secure app access" is enabled if using regular password

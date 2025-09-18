@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Email Login - UTS 2.0{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- Left side - Enhanced Branding -->
+        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center login-left-panel position-relative overflow-hidden">
+            <!-- Animated Background Elements -->
+            <div class="floating-elements">
+                <div class="floating-element element-1"></div>
+                <div class="floating-element element-2"></div>
+                <div class="floating-element element-3"></div>
+                <div class="floating-element element-4"></div>
+            </div>
+            
+            <!-- Background Pattern -->
+            <div class="position-absolute w-100 h-100 opacity-10 login-bg-pattern"></div>
+            
+            <div class="text-center text-white position-relative z-3 px-5">
+                <!-- Enhanced Logo & Branding -->
+                <div class="mb-5">
+                    <div class="brand-logo mb-4">
+                        <img src="{{ url_for('static', filename='images/uts-logo.png') }}" alt="UTS 2.0" class="login-main-logo">
+                    </div>
+                    <h1 class="brand-title fw-bold mb-3">UTS 2.0</h1>
+                    <p class="lead fw-medium opacity-90 mb-0">Universal Tracking System</p>
+                    <small class="opacity-75 d-block mt-2">Secure Email Login</small>
+                </div>
+                
+                <!-- OTP Features -->
+                <div class="row text-center g-4 mt-4">
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="feature-icon mb-3">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <h6 class="fw-semibold mb-2">Email OTP</h6>
+                            <small class="opacity-80">No password needed</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="feature-icon mb-3">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <h6 class="fw-semibold mb-2">5 Min Expiry</h6>
+                            <small class="opacity-80">Secure time limit</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="feature-card">
+                            <div class="feature-icon mb-3">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <h6 class="fw-semibold mb-2">Bank-Level</h6>
+                            <small class="opacity-80">Maximum security</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right side - OTP Login Form -->
+        <div class="col-lg-6 d-flex align-items-center justify-content-center login-right-panel position-relative">
+            <div class="login-container w-100 px-4 py-5">
+                <!-- Mobile Logo -->
+                <div class="text-center mb-4 d-lg-none">
+                    <div class="mobile-logo mb-3">
+                        <img src="{{ url_for('static', filename='images/uts-logo.png') }}" alt="UTS 2.0" class="mobile-logo-img">
+                    </div>
+                    <h3 class="fw-bold text-gradient">UTS 2.0</h3>
+                </div>
+                
+                <div class="login-card card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <!-- Header -->
+                        <div class="text-center mb-5">
+                            <div class="otp-icon mb-3">
+                                <i class="fas fa-envelope-open-text text-primary" style="font-size: 3rem;"></i>
+                            </div>
+                            <h2 class="login-title fw-bold mb-2">Email Login</h2>
+                            <p class="login-subtitle text-muted mb-0">Enter your email to receive a secure login code</p>
+                        </div>
+
+                        <!-- Error Container -->
+                        <div id="errorContainer" class="mb-4">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% if messages %}
+                                    {% for category, message in messages %}
+                                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show login-alert" role="alert">
+                                            <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                                            {{ message }}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        
+                        <form method="POST" id="otpForm" class="login-form" novalidate>
+                            <!-- Email Field -->
+                            <div class="form-group mb-4">
+                                <label for="email" class="form-label fw-semibold text-dark mb-2">
+                                    <i class="fas fa-envelope me-2 text-primary"></i>Email Address
+                                </label>
+                                <input type="email" 
+                                       class="form-control form-control-lg login-input" 
+                                       id="email" 
+                                       name="email" 
+                                       placeholder="Enter your email address"
+                                       required 
+                                       autocomplete="email"
+                                       aria-describedby="emailHelp">
+                                <div class="invalid-feedback">
+                                    <i class="fas fa-exclamation-circle me-1"></i>Please enter a valid email address.
+                                </div>
+                            </div>
+                            
+                            <!-- Send OTP Button -->
+                            <div class="d-grid mb-4">
+                                <button type="submit" class="btn btn-primary btn-lg sign-in-btn">
+                                    <span class="btn-text">
+                                        <i class="fas fa-paper-plane me-2"></i>Send Login Code
+                                    </span>
+                                    <div class="btn-loading d-none">
+                                        <div class="spinner-border spinner-border-sm me-2"></div>
+                                        Sending code...
+                                    </div>
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Back to Password Login -->
+                        <div class="text-center">
+                            <p class="text-muted mb-0">
+                                Prefer password login? 
+                                <a href="{{ url_for('login') }}" class="btn btn-link p-0 fw-semibold register-link">
+                                    <i class="fas fa-key me-1"></i>Use Password Instead
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Security Badge -->
+                <div class="security-section text-center mt-4">
+                    <div class="security-badge mb-3">
+                        <i class="fas fa-shield-check text-success me-2"></i>
+                        <span class="fw-semibold">256-bit SSL encrypted connection</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('otpForm');
+    const emailInput = document.getElementById('email');
+    const submitBtn = form.querySelector('.sign-in-btn');
+    
+    // Auto-focus email field
+    emailInput.focus();
+    
+    // Real-time validation
+    emailInput.addEventListener('blur', validateEmail);
+    emailInput.addEventListener('input', function() {
+        clearValidation(this);
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        if (!validateEmail()) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Show loading state
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+        
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        btnText.classList.add('d-none');
+        btnLoading.classList.remove('d-none');
+    });
+    
+    function validateEmail() {
+        const email = emailInput.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const isValid = emailRegex.test(email);
+        
+        emailInput.classList.toggle('is-valid', isValid && email.length > 0);
+        emailInput.classList.toggle('is-invalid', !isValid && email.length > 0);
+        
+        return isValid;
+    }
+    
+    function clearValidation(field) {
+        field.classList.remove('is-valid', 'is-invalid');
+    }
+});
+</script>
+{% endblock %}

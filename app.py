@@ -20,12 +20,36 @@ from collections import defaultdict
 import csv
 from io import StringIO
 import uuid
+from flask_mail import Mail, Message
+import random
+import string
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
+
+# Email configuration for OTP
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@uts2.com')
+
+# Debug: Print loaded environment variables
+print("=== EMAIL CONFIGURATION DEBUG ===")
+print(f"MAIL_SERVER: {os.getenv('MAIL_SERVER')}")
+print(f"MAIL_PORT: {os.getenv('MAIL_PORT')}")
+print(f"MAIL_USE_TLS: {os.getenv('MAIL_USE_TLS')}")
+print(f"MAIL_USERNAME: {os.getenv('MAIL_USERNAME')}")
+print(f"MAIL_PASSWORD: {'***' if os.getenv('MAIL_PASSWORD') else 'NOT SET'}")
+print(f"MAIL_DEFAULT_SENDER: {os.getenv('MAIL_DEFAULT_SENDER')}")
+print("=================================")
+
+# Initialize Flask-Mail
+mail = Mail(app)
 
 # Session configuration (optimized)
 app.config['SESSION_PERMANENT'] = False  # Default to False, can be overridden per session
@@ -1761,6 +1785,14 @@ class UserManager:
                 return user
         return None
     
+    def get_user_by_email(self, email):
+        """Get user by email"""
+        users = self.load_users()
+        for user in users:
+            if user['email'].lower() == email.lower():
+                return user
+        return None
+    
     def create_user(self, username, password, email, full_name=None, phone=None, position=None, role='user'):
         """Create a new user"""
         try:
@@ -1939,6 +1971,159 @@ def extend_session_if_needed():
         # Refresh the session for persistent sessions
         session.permanent = True
         print(f"Extended session for user {session.get('username', 'unknown')}")
+
+# =====================================
+#   OTP SYSTEM FOR EMAIL LOGIN
+# =====================================
+
+class OTPSystem:
+    def __init__(self):
+        self.otp_storage = {}  # In production, use Redis or database
+        self.rate_limits = {}  # Track rate limiting per email
+        self.max_attempts = 3  # Max OTP requests per hour
+        self.otp_expiry = 300  # 5 minutes in seconds
+        self.rate_limit_window = 3600  # 1 hour in seconds
+    
+    def generate_otp(self, length=6):
+        """Generate a random OTP"""
+        return ''.join(random.choices(string.digits, k=length))
+    
+    def send_otp_email(self, email, otp):
+        """Send OTP via email"""
+        try:
+            # Check if email configuration is properly set
+            if not app.config['MAIL_USERNAME'] or not app.config['MAIL_PASSWORD']:
+                print("ERROR: Email credentials not configured. Please set MAIL_USERNAME and MAIL_PASSWORD in .env file")
+                return False
+            
+            print(f"Attempting to send OTP to {email}")
+            print(f"Using SMTP server: {app.config['MAIL_SERVER']}:{app.config['MAIL_PORT']}")
+            print(f"Using username: {app.config['MAIL_USERNAME']}")
+            
+            msg = Message(
+                subject='UTS 2.0 - Your Login Code',
+                recipients=[email],
+                html=f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1 style="color: white; margin: 0; font-size: 28px;">UTS 2.0</h1>
+                        <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">Universal Tracking System</p>
+                    </div>
+                    
+                    <div style="background: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h2 style="color: #333; margin-bottom: 20px;">Your Login Code</h2>
+                        <p style="color: #666; font-size: 16px; line-height: 1.6;">
+                            Use the following code to sign in to your UTS 2.0 account:
+                        </p>
+                        
+                        <div style="background: #f8f9fa; border: 2px dashed #dee2e6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 8px;">
+                            <div style="font-size: 32px; font-weight: bold; color: #495057; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                                {otp}
+                            </div>
+                        </div>
+                        
+                        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+                            This code will expire in <strong>5 minutes</strong> for security reasons.
+                        </p>
+                        
+                        <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                            <p style="color: #856404; margin: 0; font-size: 14px;">
+                                <strong>Security Notice:</strong> If you didn't request this code, please ignore this email. 
+                                Your account remains secure.
+                            </p>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
+                        
+                        <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
+                            This is an automated message from UTS 2.0. Please do not reply to this email.
+                        </p>
+                    </div>
+                </div>
+                """
+            )
+            
+            # Test SMTP connection first
+            with mail.connect() as conn:
+                conn.send(msg)
+            
+            print(f"OTP email sent successfully to {email}")
+            return True
+        except Exception as e:
+            print(f"ERROR sending OTP email to {email}: {str(e)}")
+            print(f"Error type: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def can_send_otp(self, email):
+        """Check if OTP can be sent (rate limiting)"""
+        now = time.time()
+        if email not in self.rate_limits:
+            self.rate_limits[email] = []
+        
+        # Remove old attempts outside the rate limit window
+        self.rate_limits[email] = [
+            attempt_time for attempt_time in self.rate_limits[email] 
+            if now - attempt_time < self.rate_limit_window
+        ]
+        
+        return len(self.rate_limits[email]) < self.max_attempts
+    
+    def record_otp_attempt(self, email):
+        """Record an OTP attempt for rate limiting"""
+        now = time.time()
+        if email not in self.rate_limits:
+            self.rate_limits[email] = []
+        self.rate_limits[email].append(now)
+    
+    def store_otp(self, email, otp):
+        """Store OTP with expiry"""
+        now = time.time()
+        self.otp_storage[email] = {
+            'otp': otp,
+            'expires_at': now + self.otp_expiry,
+            'attempts': 0
+        }
+    
+    def verify_otp(self, email, provided_otp):
+        """Verify OTP"""
+        if email not in self.otp_storage:
+            return False, "No OTP found for this email"
+        
+        otp_data = self.otp_storage[email]
+        now = time.time()
+        
+        # Check if OTP has expired
+        if now > otp_data['expires_at']:
+            del self.otp_storage[email]
+            return False, "OTP has expired. Please request a new one."
+        
+        # Check attempt limit
+        if otp_data['attempts'] >= 3:
+            del self.otp_storage[email]
+            return False, "Too many incorrect attempts. Please request a new OTP."
+        
+        # Verify OTP
+        if otp_data['otp'] == provided_otp:
+            del self.otp_storage[email]  # Remove OTP after successful verification
+            return True, "OTP verified successfully"
+        else:
+            otp_data['attempts'] += 1
+            return False, f"Incorrect OTP. {3 - otp_data['attempts']} attempts remaining."
+    
+    def cleanup_expired_otps(self):
+        """Clean up expired OTPs (call this periodically)"""
+        now = time.time()
+        expired_emails = [
+            email for email, data in self.otp_storage.items()
+            if now > data['expires_at']
+        ]
+        for email in expired_emails:
+            del self.otp_storage[email]
+
+# Initialize OTP system
+otp_system = OTPSystem()
 
 # Database storage management
 class DatabaseStorage:
@@ -2172,6 +2357,219 @@ def login():
             flash('Invalid username or password', 'error')
     
     return render_template('auth/login.html')
+
+# =====================================
+#   OTP LOGIN ROUTES
+# =====================================
+
+@app.route('/login-otp', methods=['GET', 'POST'])
+def login_otp():
+    """OTP-based login page"""
+    if request.method == 'POST':
+        email = request.form['email'].strip().lower()
+        
+        # Validate email format
+        if '@' not in email or '.' not in email.split('@')[1]:
+            flash('Please enter a valid email address', 'error')
+            return render_template('auth/login_otp.html')
+        
+        # Check if user exists with this email
+        user_manager = UserManager()
+        user = user_manager.get_user_by_email(email)
+        
+        if not user:
+            flash('No account found with this email address', 'error')
+            return render_template('auth/login_otp.html')
+        
+        # Check rate limiting
+        if not otp_system.can_send_otp(email):
+            flash('Too many OTP requests. Please wait before requesting another code.', 'error')
+            return render_template('auth/login_otp.html')
+        
+        # Generate and send OTP
+        otp = otp_system.generate_otp()
+        if otp_system.send_otp_email(email, otp):
+            otp_system.store_otp(email, otp)
+            otp_system.record_otp_attempt(email)
+            session['otp_email'] = email
+            flash('OTP sent to your email address', 'success')
+            return redirect(url_for('verify_otp'))
+        else:
+            flash('Failed to send OTP. Please try again.', 'error')
+    
+    return render_template('auth/login_otp.html')
+
+@app.route('/verify-otp', methods=['GET', 'POST'])
+def verify_otp():
+    """OTP verification page"""
+    if 'otp_email' not in session:
+        flash('Please request an OTP first', 'error')
+        return redirect(url_for('login_otp'))
+    
+    if request.method == 'POST':
+        otp = request.form['otp'].strip()
+        email = session['otp_email']
+        
+        # Verify OTP
+        is_valid, message = otp_system.verify_otp(email, otp)
+        
+        if is_valid:
+            # Get user and log them in
+            user_manager = UserManager()
+            user = user_manager.get_user_by_email(email)
+            
+            if user:
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['full_name'] = user.get('full_name', '')
+                session['otp_login'] = True  # Mark as OTP login
+                
+                # Update last login
+                user_manager.update_last_login(user['id'])
+                
+                # Clean up OTP session data
+                session.pop('otp_email', None)
+                
+                next_page = request.args.get('next')
+                flash('Login successful!', 'success')
+                return redirect(next_page) if next_page else redirect(url_for('index'))
+            else:
+                flash('User not found', 'error')
+        else:
+            flash(message, 'error')
+    
+    return render_template('auth/verify_otp.html', email=session.get('otp_email', ''))
+
+@app.route('/resend-otp', methods=['POST'])
+def resend_otp():
+    """Resend OTP"""
+    if 'otp_email' not in session:
+        return jsonify({'success': False, 'message': 'No email in session'})
+    
+    email = session['otp_email']
+    
+    # Check rate limiting
+    if not otp_system.can_send_otp(email):
+        return jsonify({'success': False, 'message': 'Too many OTP requests. Please wait before requesting another code.'})
+    
+    # Generate and send new OTP
+    otp = otp_system.generate_otp()
+    if otp_system.send_otp_email(email, otp):
+        otp_system.store_otp(email, otp)
+        otp_system.record_otp_attempt(email)
+        return jsonify({'success': True, 'message': 'New OTP sent to your email'})
+    else:
+        return jsonify({'success': False, 'message': 'Failed to send OTP. Please try again.'})
+
+@app.route('/test-email', methods=['GET', 'POST'])
+def test_email():
+    """Test email configuration"""
+    if request.method == 'POST':
+        test_email = request.form.get('email', 'test@example.com')
+        
+        # Check configuration
+        config_status = {
+            'MAIL_SERVER': app.config['MAIL_SERVER'],
+            'MAIL_PORT': app.config['MAIL_PORT'],
+            'MAIL_USE_TLS': app.config['MAIL_USE_TLS'],
+            'MAIL_USERNAME': app.config['MAIL_USERNAME'],
+            'MAIL_PASSWORD': '***' if app.config['MAIL_PASSWORD'] else 'NOT SET',
+            'MAIL_DEFAULT_SENDER': app.config['MAIL_DEFAULT_SENDER']
+        }
+        
+        # Try to send test email
+        try:
+            if otp_system.send_otp_email(test_email, '123456'):
+                return jsonify({
+                    'success': True, 
+                    'message': f'Test email sent successfully to {test_email}',
+                    'config': config_status
+                })
+            else:
+                return jsonify({
+                    'success': False, 
+                    'message': 'Failed to send test email. Check console for details.',
+                    'config': config_status
+                })
+        except Exception as e:
+            return jsonify({
+                'success': False, 
+                'message': f'Error: {str(e)}',
+                'config': config_status
+            })
+    
+    # GET request - show test form
+    return f"""
+    <html>
+    <head><title>Email Configuration Test</title></head>
+    <body>
+        <h2>Email Configuration Test</h2>
+        <form method="POST">
+            <label>Test Email Address:</label><br>
+            <input type="email" name="email" value="test@example.com" required><br><br>
+            <button type="submit">Send Test Email</button>
+        </form>
+        <h3>Current Configuration:</h3>
+        <ul>
+            <li>MAIL_SERVER: {app.config['MAIL_SERVER']}</li>
+            <li>MAIL_PORT: {app.config['MAIL_PORT']}</li>
+            <li>MAIL_USE_TLS: {app.config['MAIL_USE_TLS']}</li>
+            <li>MAIL_USERNAME: {app.config['MAIL_USERNAME']}</li>
+            <li>MAIL_PASSWORD: {'***' if app.config['MAIL_PASSWORD'] else 'NOT SET'}</li>
+            <li>MAIL_DEFAULT_SENDER: {app.config['MAIL_DEFAULT_SENDER']}</li>
+        </ul>
+        <h3>Environment Variables (Raw):</h3>
+        <ul>
+            <li>MAIL_SERVER: {os.getenv('MAIL_SERVER', 'NOT SET')}</li>
+            <li>MAIL_PORT: {os.getenv('MAIL_PORT', 'NOT SET')}</li>
+            <li>MAIL_USE_TLS: {os.getenv('MAIL_USE_TLS', 'NOT SET')}</li>
+            <li>MAIL_USERNAME: {os.getenv('MAIL_USERNAME', 'NOT SET')}</li>
+            <li>MAIL_PASSWORD: {'***' if os.getenv('MAIL_PASSWORD') else 'NOT SET'}</li>
+            <li>MAIL_DEFAULT_SENDER: {os.getenv('MAIL_DEFAULT_SENDER', 'NOT SET')}</li>
+        </ul>
+    </body>
+    </html>
+    """
+
+@app.route('/debug-env')
+def debug_env():
+    """Debug environment variable loading"""
+    import os
+    from dotenv import load_dotenv
+    
+    # Check if .env file exists
+    env_file_exists = os.path.exists('.env')
+    
+    # Load environment variables
+    load_dotenv()
+    
+    # Get raw environment variables
+    raw_env = {
+        'MAIL_SERVER': os.getenv('MAIL_SERVER'),
+        'MAIL_PORT': os.getenv('MAIL_PORT'),
+        'MAIL_USE_TLS': os.getenv('MAIL_USE_TLS'),
+        'MAIL_USERNAME': os.getenv('MAIL_USERNAME'),
+        'MAIL_PASSWORD': '***' if os.getenv('MAIL_PASSWORD') else None,
+        'MAIL_DEFAULT_SENDER': os.getenv('MAIL_DEFAULT_SENDER')
+    }
+    
+    # Get Flask config
+    flask_config = {
+        'MAIL_SERVER': app.config['MAIL_SERVER'],
+        'MAIL_PORT': app.config['MAIL_PORT'],
+        'MAIL_USE_TLS': app.config['MAIL_USE_TLS'],
+        'MAIL_USERNAME': app.config['MAIL_USERNAME'],
+        'MAIL_PASSWORD': '***' if app.config['MAIL_PASSWORD'] else None,
+        'MAIL_DEFAULT_SENDER': app.config['MAIL_DEFAULT_SENDER']
+    }
+    
+    return jsonify({
+        'env_file_exists': env_file_exists,
+        'raw_environment_variables': raw_env,
+        'flask_config': flask_config,
+        'current_working_directory': os.getcwd(),
+        'env_file_path': os.path.abspath('.env')
+    })
 
 @app.route('/logout')
 def logout():

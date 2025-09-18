@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Code - UTS 2.0{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row min-vh-100">
+        <!-- Left side - Enhanced Branding -->
+        <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center login-left-panel position-relative overflow-hidden">
+            <!-- Animated Background Elements -->
+            <div class="floating-elements">
+                <div class="floating-element element-1"></div>
+                <div class="floating-element element-2"></div>
+                <div class="floating-element element-3"></div>
+                <div class="floating-element element-4"></div>
+            </div>
+            
+            <!-- Background Pattern -->
+            <div class="position-absolute w-100 h-100 opacity-10 login-bg-pattern"></div>
+            
+            <div class="text-center text-white position-relative z-3 px-5">
+                <!-- Enhanced Logo & Branding -->
+                <div class="mb-5">
+                    <div class="brand-logo mb-4">
+                        <img src="{{ url_for('static', filename='images/uts-logo.png') }}" alt="UTS 2.0" class="login-main-logo">
+                    </div>
+                    <h1 class="brand-title fw-bold mb-3">UTS 2.0</h1>
+                    <p class="lead fw-medium opacity-90 mb-0">Universal Tracking System</p>
+                    <small class="opacity-75 d-block mt-2">Code Verification</small>
+                </div>
+                
+                <!-- Verification Features -->
+                <div class="row text-center g-4 mt-4">
+                    <div class="col-6">
+                        <div class="feature-card">
+                            <div class="feature-icon mb-3">
+                                <i class="fas fa-key"></i>
+                            </div>
+                            <h6 class="fw-semibold mb-2">6-Digit Code</h6>
+                            <small class="opacity-80">Check your email</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="feature-card">
+                            <div class="feature-icon mb-3">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <h6 class="fw-semibold mb-2">5 Min Expiry</h6>
+                            <small class="opacity-80">Time limited</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right side - OTP Verification Form -->
+        <div class="col-lg-6 d-flex align-items-center justify-content-center login-right-panel position-relative">
+            <div class="login-container w-100 px-4 py-5">
+                <!-- Mobile Logo -->
+                <div class="text-center mb-4 d-lg-none">
+                    <div class="mobile-logo mb-3">
+                        <img src="{{ url_for('static', filename='images/uts-logo.png') }}" alt="UTS 2.0" class="mobile-logo-img">
+                    </div>
+                    <h3 class="fw-bold text-gradient">UTS 2.0</h3>
+                </div>
+                
+                <div class="login-card card shadow-lg border-0">
+                    <div class="card-body p-5">
+                        <!-- Header -->
+                        <div class="text-center mb-5">
+                            <div class="otp-icon mb-3">
+                                <i class="fas fa-key text-primary" style="font-size: 3rem;"></i>
+                            </div>
+                            <h2 class="login-title fw-bold mb-2">Enter Verification Code</h2>
+                            <p class="login-subtitle text-muted mb-0">
+                                We sent a 6-digit code to<br>
+                                <strong class="text-primary">{{ email }}</strong>
+                            </p>
+                        </div>
+
+                        <!-- Error Container -->
+                        <div id="errorContainer" class="mb-4">
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% if messages %}
+                                    {% for category, message in messages %}
+                                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show login-alert" role="alert">
+                                            <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
+                                            {{ message }}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        
+                        <form method="POST" id="verifyForm" class="login-form" novalidate>
+                            <!-- OTP Input Field -->
+                            <div class="form-group mb-4">
+                                <label for="otp" class="form-label fw-semibold text-dark mb-2">
+                                    <i class="fas fa-key me-2 text-primary"></i>Verification Code
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg login-input text-center" 
+                                       id="otp" 
+                                       name="otp" 
+                                       placeholder="000000"
+                                       maxlength="6"
+                                       required 
+                                       autocomplete="one-time-code"
+                                       style="font-size: 1.5rem; letter-spacing: 0.5rem; font-family: 'Courier New', monospace;"
+                                       aria-describedby="otpHelp">
+                                <div class="invalid-feedback">
+                                    <i class="fas fa-exclamation-circle me-1"></i>Please enter the 6-digit code.
+                                </div>
+                                <small id="otpHelp" class="form-text text-muted mt-2">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Enter the 6-digit code from your email
+                                </small>
+                            </div>
+                            
+                            <!-- Verify Button -->
+                            <div class="d-grid mb-4">
+                                <button type="submit" class="btn btn-primary btn-lg sign-in-btn">
+                                    <span class="btn-text">
+                                        <i class="fas fa-check me-2"></i>Verify & Login
+                                    </span>
+                                    <div class="btn-loading d-none">
+                                        <div class="spinner-border spinner-border-sm me-2"></div>
+                                        Verifying...
+                                    </div>
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Resend OTP -->
+                        <div class="text-center mb-3">
+                            <p class="text-muted mb-2">Didn't receive the code?</p>
+                            <button type="button" id="resendBtn" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-redo me-1"></i>Resend Code
+                            </button>
+                            <div id="resendTimer" class="mt-2 d-none">
+                                <small class="text-muted">Resend available in <span id="countdown">60</span> seconds</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Back to Email Login -->
+                        <div class="text-center">
+                            <p class="text-muted mb-0">
+                                Wrong email? 
+                                <a href="{{ url_for('login_otp') }}" class="btn btn-link p-0 fw-semibold register-link">
+                                    <i class="fas fa-arrow-left me-1"></i>Change Email
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Security Badge -->
+                <div class="security-section text-center mt-4">
+                    <div class="security-badge mb-3">
+                        <i class="fas fa-shield-check text-success me-2"></i>
+                        <span class="fw-semibold">256-bit SSL encrypted connection</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('verifyForm');
+    const otpInput = document.getElementById('otp');
+    const submitBtn = form.querySelector('.sign-in-btn');
+    const resendBtn = document.getElementById('resendBtn');
+    const resendTimer = document.getElementById('resendTimer');
+    const countdown = document.getElementById('countdown');
+    
+    let resendCooldown = 60; // 60 seconds cooldown
+    let countdownInterval;
+    
+    // Auto-focus OTP input
+    otpInput.focus();
+    
+    // Format OTP input (only numbers, 6 digits)
+    otpInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+        if (value.length > 6) {
+            value = value.substring(0, 6);
+        }
+        e.target.value = value;
+        
+        // Auto-submit when 6 digits are entered
+        if (value.length === 6) {
+            setTimeout(() => {
+                form.requestSubmit();
+            }, 500);
+        }
+    });
+    
+    // Real-time validation
+    otpInput.addEventListener('blur', validateOTP);
+    otpInput.addEventListener('input', function() {
+        clearValidation(this);
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        if (!validateOTP()) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Show loading state
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnLoading = submitBtn.querySelector('.btn-loading');
+        
+        submitBtn.disabled = true;
+        submitBtn.classList.add('loading');
+        btnText.classList.add('d-none');
+        btnLoading.classList.remove('d-none');
+    });
+    
+    // Resend OTP functionality
+    resendBtn.addEventListener('click', function() {
+        resendOTP();
+    });
+    
+    function validateOTP() {
+        const otp = otpInput.value.trim();
+        const isValid = /^\d{6}$/.test(otp);
+        
+        otpInput.classList.toggle('is-valid', isValid && otp.length === 6);
+        otpInput.classList.toggle('is-invalid', !isValid && otp.length > 0);
+        
+        return isValid;
+    }
+    
+    function clearValidation(field) {
+        field.classList.remove('is-valid', 'is-invalid');
+    }
+    
+    function resendOTP() {
+        // Disable resend button and start cooldown
+        resendBtn.disabled = true;
+        resendBtn.classList.add('d-none');
+        resendTimer.classList.remove('d-none');
+        
+        // Start countdown
+        countdownInterval = setInterval(() => {
+            resendCooldown--;
+            countdown.textContent = resendCooldown;
+            
+            if (resendCooldown <= 0) {
+                clearInterval(countdownInterval);
+                resendBtn.disabled = false;
+                resendBtn.classList.remove('d-none');
+                resendTimer.classList.add('d-none');
+                resendCooldown = 60;
+            }
+        }, 1000);
+        
+        // Make AJAX request to resend OTP
+        fetch('{{ url_for("resend_otp") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to resend OTP. Please try again.', 'error');
+        });
+    }
+    
+    // Toast notification function
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+        
+        const iconMap = {
+            'success': 'fas fa-check-circle',
+            'error': 'fas fa-exclamation-circle',
+            'info': 'fas fa-info-circle',
+            'warning': 'fas fa-exclamation-triangle'
+        };
+        
+        const colorMap = {
+            'success': 'success',
+            'error': 'danger',
+            'info': 'info',
+            'warning': 'warning'
+        };
+        
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${colorMap[type]} border-0 shadow-lg`;
+        toast.setAttribute('role', 'alert');
+        toast.style.borderRadius = '12px';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="${iconMap[type]} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        const bsToast = new bootstrap.Toast(toast, {
+            autohide: true,
+            delay: 4000
+        });
+        bsToast.show();
+        
+        toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
+    
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '1055';
+        document.body.appendChild(container);
+        return container;
+    }
+});
+</script>
+{% endblock %}
