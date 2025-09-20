@@ -1,7 +1,7 @@
 # Login Performance Improvements
 
 ## Overview
-This document outlines the comprehensive performance optimizations implemented to significantly improve login times in the UTS Database Dashboard platform.
+This document outlines the comprehensive performance optimizations implemented to significantly improve login times in the Jarvis Database Dashboard platform.
 
 ## Performance Issues Identified
 

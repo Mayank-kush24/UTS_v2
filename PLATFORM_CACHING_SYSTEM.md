@@ -1,7 +1,7 @@
 # Platform-Wide Caching System Implementation
 
 ## Overview
-This document outlines the comprehensive caching system implemented across the entire UTS Database Dashboard platform to dramatically improve performance, reduce server load, and enhance user experience.
+This document outlines the comprehensive caching system implemented across the entire Jarvis Database Dashboard platform to dramatically improve performance, reduce server load, and enhance user experience.
 
 ## System Architecture
 

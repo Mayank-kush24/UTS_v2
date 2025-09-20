@@ -1,7 +1,7 @@
 # Email OTP Login System
 
 ## Overview
-The UTS 2.0 application now includes a secure email OTP (One-Time Password) login system that allows users to authenticate without passwords.
+The Jarvis application now includes a secure email OTP (One-Time Password) login system that allows users to authenticate without passwords.
 
 ## How It Works
 
@@ -28,7 +28,7 @@ MAIL_PORT=587
 MAIL_USE_TLS=True
 MAIL_USERNAME=your-email@gmail.com
 MAIL_PASSWORD=your-app-password
-MAIL_DEFAULT_SENDER=noreply@uts2.com
+MAIL_DEFAULT_SENDER=noreply@jarvis.com
 ```
 
 ### 4. **Routes Added**

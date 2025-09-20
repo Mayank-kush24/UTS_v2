@@ -155,7 +155,7 @@ toggleButton.addEventListener('click', function() {
 ### **Design Benefits**
 - **Modern Feel**: Smooth animations
 - **Progressive Disclosure**: Show options when needed
-- **Consistent Branding**: Maintains UTS 2.0 styling
+- **Consistent Branding**: Maintains Jarvis styling
 - **Mobile Friendly**: Works great on all devices
 
 ### **Technical Benefits**

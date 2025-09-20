@@ -1,7 +1,7 @@
 # Primary OTP Login System - Implementation Summary
 
 ## Overview
-The UTS 2.0 application has been restructured to make **Email OTP login the primary authentication method** and **Password login secondary**.
+The Jarvis application has been restructured to make **Email OTP login the primary authentication method** and **Password login secondary**.
 
 ## Changes Made
 
@@ -90,7 +90,7 @@ The UTS 2.0 application has been restructured to make **Email OTP login the prim
 ### **Styling**
 - **Primary buttons**: Large, prominent styling
 - **Secondary buttons**: Smaller, outlined styling
-- **Consistent design**: All pages maintain UTS 2.0 branding
+- **Consistent design**: All pages maintain Jarvis branding
 
 ## Usage Instructions
 
@@ -133,4 +133,4 @@ The UTS 2.0 application has been restructured to make **Email OTP login the prim
 
 ## Conclusion
 
-The UTS 2.0 application now provides a modern, secure login experience with OTP as the primary method while maintaining backward compatibility with password authentication. Users get the best of both worlds - convenience and security with OTP, and familiarity with password login as a fallback option.
+The Jarvis application now provides a modern, secure login experience with OTP as the primary method while maintaining backward compatibility with password authentication. Users get the best of both worlds - convenience and security with OTP, and familiarity with password login as a fallback option.

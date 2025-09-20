@@ -26,7 +26,7 @@ MAIL_PASSWORD=your-app-password
 MAIL_SERVER=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USE_TLS=True
-MAIL_DEFAULT_SENDER=noreply@uts2.com
+MAIL_DEFAULT_SENDER=noreply@jarvis.com
 ```
 
 ### ❌ **Issue 2: Gmail Authentication Failed**

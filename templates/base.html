@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}UTS 2.0{% endblock %}</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/uts-logo.png') }}">
-    <link rel="alternate icon" href="{{ url_for('static', filename='images/uts-logo.png') }}">
+    <title>{% block title %}Jarvis{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/pngegg.png') }}">
+    <link rel="alternate icon" href="{{ url_for('static', filename='images/pngegg.png') }}">
     <!-- Google Fonts - Google Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,8 +24,8 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-gradient">
         <div class="container">
             <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
-                <img src="{{ url_for('static', filename='images/uts-logo.png') }}" alt="UTS 2.0" class="navbar-logo me-2">
-                UTS 2.0
+                <img src="{{ url_for('static', filename='images/pngegg.png') }}" alt="Jarvis" class="navbar-logo me-2">
+                Jarvis
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -172,7 +172,7 @@
                         <i class="fas fa-sign-out-alt me-3"></i>
                         <div class="menu-item-content">
                             <span class="menu-item-title">Sign Out</span>
-                            <small class="menu-item-desc">Logout from Universal Tracking System</small>
+                            <small class="menu-item-desc">Logout from Jarvis</small>
                         </div>
                         <i class="fas fa-chevron-right item-arrow"></i>
                     </a>
@@ -199,7 +199,7 @@
 
     <footer class="bg-light mt-5 py-4">
         <div class="container text-center">
-            <p class="text-muted mb-0">UTS 2.0 - Universal Tracking System</p>
+            <p class="text-muted mb-0">Jarvis - Universal Tracking System</p>
         </div>
     </footer>
 
@@ -371,7 +371,7 @@ Data Operations:
     
     // Logout confirmation
     function confirmLogout(event) {
-        const result = confirm('Are you sure you want to logout from Universal Tracking System?');
+        const result = confirm('Are you sure you want to logout from Jarvis?');
         if (!result) {
             event.preventDefault();
             return false;

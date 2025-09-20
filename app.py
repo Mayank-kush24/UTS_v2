@@ -36,7 +36,7 @@ app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@uts2.com')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@jarvis.com')
 
 # Debug: Print loaded environment variables
 print("=== EMAIL CONFIGURATION DEBUG ===")
@@ -2001,19 +2001,19 @@ class OTPSystem:
             print(f"Using username: {app.config['MAIL_USERNAME']}")
             
             msg = Message(
-                subject='UTS 2.0 - Your Login Code',
+                subject='Jarvis - Your Login Code',
                 recipients=[email],
                 html=f"""
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-                        <h1 style="color: white; margin: 0; font-size: 28px;">UTS 2.0</h1>
+                        <h1 style="color: white; margin: 0; font-size: 28px;">Jarvis</h1>
                         <p style="color: white; margin: 10px 0 0 0; opacity: 0.9;">Universal Tracking System</p>
                     </div>
                     
                     <div style="background: white; padding: 40px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         <h2 style="color: #333; margin-bottom: 20px;">Your Login Code</h2>
                         <p style="color: #666; font-size: 16px; line-height: 1.6;">
-                            Use the following code to sign in to your UTS 2.0 account:
+                            Use the following code to sign in to your Jarvis account:
                         </p>
                         
                         <div style="background: #f8f9fa; border: 2px dashed #dee2e6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 8px;">
@@ -2036,7 +2036,7 @@ class OTPSystem:
                         <hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
                         
                         <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
-                            This is an automated message from UTS 2.0. Please do not reply to this email.
+                            This is an automated message from Jarvis. Please do not reply to this email.
                         </p>
                     </div>
                 </div>

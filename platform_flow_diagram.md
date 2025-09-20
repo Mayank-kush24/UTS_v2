@@ -1,4 +1,4 @@
-# UTS Database Dashboard Platform - Flow Diagram
+# Jarvis Database Dashboard Platform - Flow Diagram
 
 ## Platform Overview
 This is a comprehensive Flask-based database management and visualization platform with user authentication, database management, and data visualization capabilities.

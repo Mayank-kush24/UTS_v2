@@ -1,10 +1,10 @@
-# UTS Database Dashboard - FigJam Flow Diagram
+# Jarvis Database Dashboard - FigJam Flow Diagram
 
 ## FigJam-Ready Flow Chart
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           UTS DATABASE DASHBOARD PLATFORM                      │
+│                           JARVIS DATABASE DASHBOARD PLATFORM                   │
 │                              (Flask Web Application)                           │
 └─────────────────────────────────────────────────────────────────────────────────┘
                                         │
@@ -20,7 +20,7 @@
                                         ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                            AUTHENTICATION LAYER                                │
-│                                                                                 │
+│                                                                                │
 │  ┌─────────────────┐                    ┌─────────────────┐                    │
 │  │   MAIN LOGIN    │                    │ REGISTER PAGE   │                    │
 │  │   (OTP PRIMARY) │                    │                 │                    │
