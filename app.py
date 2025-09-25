@@ -2800,7 +2800,19 @@ def view_table(table_name):
 def view_config():
     """View configuration page"""
     current_user = get_current_user()
-    return render_template('view_config.html', current_user=current_user)
+    
+    # Load stored databases
+    try:
+        with open('stored_databases.json', 'r') as f:
+            data = json.load(f)
+            databases = data.get('databases', [])
+    except FileNotFoundError:
+        databases = []
+    except Exception as e:
+        print(f"Error loading databases: {e}")
+        databases = []
+    
+    return render_template('view_config.html', current_user=current_user, databases=databases)
 
 @app.route('/add_database', methods=['GET', 'POST'])
 @login_required
@@ -4948,6 +4960,173 @@ def api_debug_connection():
         return jsonify({'success': True, 'debug_info': debug_info})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/database/<database_id>/tables')
+@login_required
+def api_get_tables(database_id):
+    """Get tables for a specific database"""
+    try:
+        # Load stored databases
+        try:
+            with open('stored_databases.json', 'r') as f:
+                data = json.load(f)
+                databases = data.get('databases', [])
+        except FileNotFoundError:
+            return jsonify({'error': 'No databases found'}), 404
+        
+        # Find the database
+        database = None
+        for db in databases:
+            if db.get('id') == database_id:
+                database = db
+                break
+        
+        if not database:
+            return jsonify({'error': 'Database not found'}), 404
+        
+        # Check if this is the currently connected database
+        current_db_id = db_storage.get_current_database_id()
+        if current_db_id == database_id and db_manager.connection:
+            # Use existing connection
+            success, result = db_manager.get_tables()
+            if success:
+                tables = [{'name': table} for table in result]
+                return jsonify(tables)
+            else:
+                return jsonify({'error': result}), 500
+        else:
+            # Create temporary connection to get tables
+            try:
+                temp_connection = psycopg2.connect(
+                    host=database['host'],
+                    port=database['port'],
+                    database=database['database'],
+                    user=database.get('user', ''),
+                    password=database.get('password', '')
+                )
+                
+                cursor = temp_connection.cursor()
+                cursor.execute("""
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    ORDER BY table_name
+                """)
+                
+                tables = [{'name': row[0]} for row in cursor.fetchall()]
+                cursor.close()
+                temp_connection.close()
+                
+                return jsonify(tables)
+                
+            except psycopg2.Error as e:
+                return jsonify({'error': f'Database connection failed: {str(e)}'}), 500
+                
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/database/<database_id>/table/<table_name>/columns')
+@login_required
+def api_get_table_columns(database_id, table_name):
+    """Get columns for a specific table in a database"""
+    try:
+        # Load stored databases
+        try:
+            with open('stored_databases.json', 'r') as f:
+                data = json.load(f)
+                databases = data.get('databases', [])
+        except FileNotFoundError:
+            return jsonify({'error': 'No databases found'}), 404
+        
+        # Find the database
+        database = None
+        for db in databases:
+            if db.get('id') == database_id:
+                database = db
+                break
+        
+        if not database:
+            return jsonify({'error': 'Database not found'}), 404
+        
+        # Check if this is the currently connected database
+        current_db_id = db_storage.get_current_database_id()
+        if current_db_id == database_id and db_manager.connection:
+            # Use existing connection
+            try:
+                cursor = db_manager.connection.cursor()
+                cursor.execute("""
+                    SELECT 
+                        column_name,
+                        data_type,
+                        is_nullable,
+                        column_default,
+                        ordinal_position
+                    FROM information_schema.columns 
+                    WHERE table_name = %s AND table_schema = 'public'
+                    ORDER BY ordinal_position
+                """, [table_name])
+                
+                columns = []
+                for row in cursor.fetchall():
+                    column_name, data_type, is_nullable, column_default, ordinal_position = row
+                    columns.append({
+                        'name': column_name,
+                        'type': data_type,
+                        'nullable': is_nullable == 'YES',
+                        'default': column_default,
+                        'position': ordinal_position
+                    })
+                
+                cursor.close()
+                return jsonify(columns)
+                
+            except Exception as e:
+                return jsonify({'error': f'Failed to get columns: {str(e)}'}), 500
+        else:
+            # Create temporary connection to get columns
+            try:
+                temp_connection = psycopg2.connect(
+                    host=database['host'],
+                    port=database['port'],
+                    database=database['database'],
+                    user=database.get('user', ''),
+                    password=database.get('password', '')
+                )
+                
+                cursor = temp_connection.cursor()
+                cursor.execute("""
+                    SELECT 
+                        column_name,
+                        data_type,
+                        is_nullable,
+                        column_default,
+                        ordinal_position
+                    FROM information_schema.columns 
+                    WHERE table_name = %s AND table_schema = 'public'
+                    ORDER BY ordinal_position
+                """, [table_name])
+                
+                columns = []
+                for row in cursor.fetchall():
+                    column_name, data_type, is_nullable, column_default, ordinal_position = row
+                    columns.append({
+                        'name': column_name,
+                        'type': data_type,
+                        'nullable': is_nullable == 'YES',
+                        'default': column_default,
+                        'position': ordinal_position
+                    })
+                
+                cursor.close()
+                temp_connection.close()
+                
+                return jsonify(columns)
+                
+            except psycopg2.Error as e:
+                return jsonify({'error': f'Database connection failed: {str(e)}'}), 500
+                
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

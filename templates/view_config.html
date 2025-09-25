@@ -208,19 +208,25 @@
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="action-buttons">
-                        <button class="btn btn-primary w-100 mb-2" onclick="saveConfiguration()">
-                            <i class="fas fa-save me-1"></i>Save Configuration
-                        </button>
-                        <button class="btn btn-outline-secondary w-100 mb-2" onclick="previewConfiguration()">
-                            <i class="fas fa-eye me-1"></i>Preview Changes
-                        </button>
-                        <button class="btn btn-outline-warning w-100 mb-2" onclick="resetConfiguration()">
-                            <i class="fas fa-undo me-1"></i>Reset to Default
-                        </button>
-                        <button class="btn btn-outline-info w-100" onclick="exportConfiguration()">
-                            <i class="fas fa-download me-1"></i>Export Config
-                        </button>
+                    <div class="action-buttons-container">
+                        <div class="action-buttons">
+                            <button class="btn btn-primary action-btn" onclick="saveConfiguration()">
+                                <i class="fas fa-save me-2"></i>
+                                <span>Save Config</span>
+                            </button>
+                            <button class="btn btn-outline-secondary action-btn" onclick="previewConfiguration()">
+                                <i class="fas fa-eye me-2"></i>
+                                <span>Preview Changes</span>
+                            </button>
+                        </div>
+                        <div class="action-links">
+                            <a href="#" class="action-link reset-link" onclick="resetConfiguration(); return false;">
+                                <i class="fas fa-undo me-1"></i>Reset to Default
+                            </a>
+                            <a href="#" class="action-link export-link" onclick="exportConfiguration(); return false;">
+                                <i class="fas fa-download me-1"></i>Export Config
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -746,4 +752,175 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 </script>
+{% endblock %}
+
+{% block styles %}
+<style>
+/* Action Buttons Container */
+.action-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: 100%;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    min-height: 48px;
+    border: 2px solid transparent;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+.action-btn i {
+    font-size: 1rem;
+}
+
+.action-btn span {
+    line-height: 1.2;
+}
+
+/* Primary Button */
+.action-btn.btn-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border-color: #007bff;
+    color: white;
+}
+
+.action-btn.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    border-color: #0056b3;
+    color: white;
+}
+
+/* Secondary Button */
+.action-btn.btn-outline-secondary {
+    background: white;
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.action-btn.btn-outline-secondary:hover {
+    background: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+/* Action Links */
+.action-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+
+.action-link {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.action-link:hover {
+    text-decoration: none;
+    transform: translateX(4px);
+}
+
+.reset-link {
+    color: #ffc107;
+    border-color: #ffc107;
+}
+
+.reset-link:hover {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.export-link {
+    color: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.export-link:hover {
+    background-color: #17a2b8;
+    color: white;
+}
+
+/* Preview Container */
+.preview-container {
+    background: white;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 2rem;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.preview-container:not(:empty) {
+    border-style: solid;
+    border-color: #007bff;
+    color: #495057;
+    font-style: normal;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .action-buttons-container {
+        margin-top: 1rem;
+    }
+    
+    .action-btn {
+        min-height: 44px;
+        font-size: 0.85rem;
+    }
+    
+    .action-link {
+        font-size: 0.85rem;
+    }
+}
+
+/* Button Icons */
+.action-btn i,
+.action-link i {
+    flex-shrink: 0;
+}
+
+/* Text Wrapping */
+.action-btn span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
 {% endblock %}
